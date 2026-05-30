@@ -256,7 +256,7 @@
 const CONFIG = {
   SUPABASE_URL: 'https://agormhbqxwkbojjxssay.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFnb3JtaGJxeHdrYm9qanhzc2F5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwODE3MjUsImV4cCI6MjA5NTY1NzcyNX0.IkFtUMCnpYvHFuPEIEUS7Dy0ELFnA6V4ail76ZpDu7U',
-  CLAUDE_API_KEY: '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',
+
   ADMIN_EMAIL: 'trinhdxbk56@yahoo.com',
   DEFAULT_STORE_INFO: 'POD store selling custom print-on-demand products. Shipping: 7-14 business days. Refund policy: 30 days for defective/wrong items. Platform: ShopBase.',
 };
@@ -595,9 +595,9 @@ Reply ONLY in this exact JSON (no markdown, no extra text):
 }`;
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('https://solitary-surf-52e3.trinhdxbk56.workers.dev/', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': CONFIG.CLAUDE_API_KEY, 'anthropic-version': '2023-06-01' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514', max_tokens: 1000,
         system, messages: [{ role: 'user', content: `Customer email:\n${emailText}` }]
