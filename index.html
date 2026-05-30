@@ -213,15 +213,108 @@ const CONFIG = {
       <div class="topbar">
         <div>
           <div class="topbar-title">✉ Email Agent</div>
-          <div class="topbar-sub">Chọn store → dán chuỗi email → agent phân tích & soạn phản hồi</div>
+          <div class="topbar-sub" id="email-agent-sub">Chọn store → dán chuỗi email → agent phân tích & soạn phản hồi</div>
         </div>
         <div style="display:flex;align-items:center;gap:10px;">
+          <div style="display:flex;gap:4px;background:var(--bg3);padding:3px;border-radius:8px;border:1px solid var(--border);">
+            <button id="mode-reply-btn" onclick="switchEmailMode('reply')" style="padding:5px 12px;border-radius:6px;border:none;font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;background:var(--accent);color:#fff;transition:all .15s;">↩ Trả lời</button>
+            <button id="mode-outbound-btn" onclick="switchEmailMode('outbound')" style="padding:5px 12px;border-radius:6px;border:none;font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;background:transparent;color:var(--muted);transition:all .15s;">✉ Chủ động</button>
+          </div>
           <div id="step-indicator" class="status-pill">Bước 1 — Chờ email</div>
           <div id="agent-status-badge" class="status-pill"><div class="dot"></div> Sẵn sàng</div>
         </div>
       </div>
       <div class="content" style="display:flex;flex-direction:column;gap:14px;">
 
+        <!-- OUTBOUND EMAIL MODE -->
+        <div id="outbound-mode" style="display:none;">
+          <div class="agent-grid">
+
+            <!-- LEFT: OUTBOUND INPUT -->
+            <div class="panel">
+              <div class="panel-head">✉ Thông tin email chủ động</div>
+              <div>
+                <label>Cửa hàng</label>
+                <select id="outbound-store-select" onchange="onOutboundStoreChange()">
+                  <option value="">-- Chọn cửa hàng --</option>
+                </select>
+              </div>
+              <div>
+                <label>Email khách hàng *</label>
+                <input id="outbound-customer-email" placeholder="customer@email.com" style="font-size:13px;" oninput="autoLookupOutbound(this.value)"/>
+              </div>
+              <div>
+                <label>Tên khách hàng</label>
+                <input id="outbound-customer-name" placeholder="VD: John Smith" style="font-size:13px;"/>
+              </div>
+
+              <div>
+                <label>Mục đích email *</label>
+                <select id="outbound-purpose" onchange="onPurposeChange()">
+                  <option value="">-- Chọn mục đích --</option>
+                  <option value="confirm_size">Xác nhận size / màu sắc / thiết kế</option>
+                  <option value="confirm_address">Xác nhận địa chỉ giao hàng</option>
+                  <option value="confirm_phone">Yêu cầu số điện thoại liên hệ</option>
+                  <option value="confirm_all">Xác nhận toàn bộ thông tin đơn</option>
+                  <option value="order_update">Cập nhật tình trạng đơn hàng</option>
+                  <option value="delay_notice">Thông báo chậm trễ giao hàng</option>
+                  <option value="product_issue">Thông báo vấn đề sản phẩm</option>
+                  <option value="custom">Khác — tự mô tả</option>
+                </select>
+              </div>
+
+              <!-- Dynamic fields based on purpose -->
+              <div id="outbound-dynamic-fields" style="display:flex;flex-direction:column;gap:10px;"></div>
+
+              <!-- Order info from Excel -->
+              <div id="outbound-order-info" style="display:none;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px;">
+                <div style="font-size:11px;font-weight:600;color:var(--accent2);margin-bottom:6px;">📦 Thông tin đơn hàng (từ Excel)</div>
+                <div id="outbound-order-detail" style="font-size:12px;line-height:1.7;"></div>
+              </div>
+
+              <div>
+                <label>Ghi chú thêm cho agent (tuỳ chọn)</label>
+                <textarea id="outbound-notes" rows="2" style="resize:none;font-size:12px;" placeholder="VD: Khách đặt 2 áo khác size, cần xác nhận từng cái..."></textarea>
+              </div>
+
+              <button class="analyze-btn" id="outbound-btn" onclick="generateOutbound()">✦ Viết email chủ động</button>
+            </div>
+
+            <!-- RIGHT: OUTBOUND OUTPUT -->
+            <div class="panel">
+              <div class="panel-head" style="justify-content:space-between;">
+                <span>🤖 Email soạn bởi Agent</span>
+                <span id="outbound-status" class="status-pill"><div class="dot"></div> Chờ thông tin...</span>
+              </div>
+
+              <div id="outbound-placeholder" style="flex:1;display:flex;align-items:center;justify-content:center;min-height:200px;">
+                <div class="draft-placeholder">
+                  <div style="font-size:32px;margin-bottom:10px;">✉</div>
+                  Điền thông tin bên trái<br>và nhấn viết email
+                </div>
+              </div>
+
+              <div id="outbound-result" style="display:none;flex-direction:column;gap:12px;">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                  <div style="display:flex;flex-direction:column;gap:6px;">
+                    <label style="display:flex;align-items:center;gap:6px;">✉ Email gốc <span style="font-size:11px;color:var(--muted);">(copy gửi khách)</span></label>
+                    <div class="draft-box" id="outbound-draft-original" style="min-height:200px;"></div>
+                    <button class="copy-btn" onclick="copyOutboundDraft()">⎘ Copy email gốc</button>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:6px;">
+                    <label>🇻🇳 Bản dịch tiếng Việt</label>
+                    <div class="draft-box" id="outbound-draft-vietnamese" style="min-height:200px;color:var(--muted);"></div>
+                  </div>
+                </div>
+                <button class="btn" style="font-size:12px;width:100%;" onclick="resetOutbound()">↺ Viết email khác</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- REPLY MODE (default) -->
+        <div id="reply-mode">
         <!-- ROW 1: INPUT + ANALYSIS -->
         <div class="agent-grid">
 
@@ -521,6 +614,7 @@ const CONFIG = {
 
         </div>
       </div>
+        </div><!-- end reply-mode -->
     </div>
 
     <!-- HISTORY PAGE -->
@@ -1011,6 +1105,213 @@ function clearExcelData() {
   document.getElementById('excel-clear-btn').style.display = 'none';
   document.getElementById('excel-status').textContent = '';
   document.getElementById('excel-search-email').value = '';
+}
+
+// ── OUTBOUND EMAIL ───────────────────────────────────
+let outboundStore = null;
+let currentOutboundDraft = '';
+
+function switchEmailMode(mode) {
+  const isReply = mode === 'reply';
+  document.getElementById('reply-mode').style.display = isReply ? 'block' : 'none';
+  document.getElementById('outbound-mode').style.display = isReply ? 'none' : 'block';
+  document.getElementById('mode-reply-btn').style.background = isReply ? 'var(--accent)' : 'transparent';
+  document.getElementById('mode-reply-btn').style.color = isReply ? '#fff' : 'var(--muted)';
+  document.getElementById('mode-outbound-btn').style.background = isReply ? 'transparent' : 'var(--accent)';
+  document.getElementById('mode-outbound-btn').style.color = isReply ? 'var(--muted)' : '#fff';
+  const sub = document.getElementById('email-agent-sub');
+  sub.textContent = isReply
+    ? 'Chọn store → dán chuỗi email → agent phân tích & soạn phản hồi'
+    : 'Chọn store → điền thông tin → agent viết email chủ động đến khách';
+  if (mode === 'outbound') renderOutboundStores();
+}
+
+function renderOutboundStores() {
+  const sel = document.getElementById('outbound-store-select');
+  sel.innerHTML = '<option value="">-- Chọn cửa hàng --</option>' +
+    stores.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+}
+
+function onOutboundStoreChange() {
+  const id = document.getElementById('outbound-store-select').value;
+  outboundStore = stores.find(s => s.id === id) || null;
+}
+
+function autoLookupOutbound(email) {
+  if (!email || !email.includes('@') || excelData.length === 0) return;
+  const emailCol = excelHeaders.find(h => /email|mail/i.test(h));
+  let match = null;
+  if (emailCol) match = excelData.find(r => (r[emailCol]||'').toLowerCase() === email.toLowerCase());
+  if (!match) match = excelData.find(r => Object.values(r).some(v => typeof v==='string' && v.toLowerCase()===email.toLowerCase()));
+  if (!match) return;
+
+  // Fill name if found
+  const nameCol = excelHeaders.find(h => /^name$|customer.?name|buyer/i.test(h));
+  if (nameCol && match[nameCol]) document.getElementById('outbound-customer-name').value = match[nameCol];
+
+  // Show order info
+  const keyPatterns = [/name|tên/i,/email/i,/order|đơn/i,/product|sản phẩm/i,/size/i,/color|màu/i,/address|địa chỉ/i,/track/i,/sku/i,/quantity|sl/i];
+  const showFields = excelHeaders.filter(h => match[h] && keyPatterns.some(p => p.test(h))).slice(0,10);
+  const allFields = showFields.length > 0 ? showFields : excelHeaders.filter(h => match[h]).slice(0,10);
+  const detail = allFields.map(h =>
+    `<div><span style="color:var(--muted);font-size:11px;">${h}:</span> <span style="font-size:12px;font-weight:500;">${match[h]}</span></div>`
+  ).join('');
+  document.getElementById('outbound-order-detail').innerHTML = detail;
+  document.getElementById('outbound-order-info').style.display = 'block';
+}
+
+function onPurposeChange() {
+  const purpose = document.getElementById('outbound-purpose').value;
+  const container = document.getElementById('outbound-dynamic-fields');
+  container.innerHTML = '';
+
+  const fieldMap = {
+    confirm_size: [
+      { id:'ob-size', label:'Size hiện tại trong đơn', placeholder:'VD: L / Red / Design A' },
+      { id:'ob-issue', label:'Vấn đề cần xác nhận', placeholder:'VD: Khách chọn 2 size khác nhau cho 2 sản phẩm, cần xác nhận lại' }
+    ],
+    confirm_address: [
+      { id:'ob-address', label:'Địa chỉ hiện tại trong đơn', placeholder:'VD: 123 Main St, Apt 4B, New York' },
+      { id:'ob-issue', label:'Phần cần làm rõ', placeholder:'VD: Thiếu số căn hộ / zip code không hợp lệ' }
+    ],
+    confirm_phone: [
+      { id:'ob-reason', label:'Lý do cần số điện thoại', placeholder:'VD: Khu vực giao hàng yêu cầu liên hệ trước' }
+    ],
+    confirm_all: [
+      { id:'ob-order-summary', label:'Tóm tắt thông tin đơn cần xác nhận', placeholder:'VD: Áo hoodie đen size XL, giao về 123 Main St...' }
+    ],
+    order_update: [
+      { id:'ob-status', label:'Tình trạng hiện tại', placeholder:'VD: Đơn đã được in và đang chờ đóng gói, dự kiến ship ngày 20/1' }
+    ],
+    delay_notice: [
+      { id:'ob-reason', label:'Lý do chậm trễ', placeholder:'VD: Nhà cung cấp hết nguyên liệu / thời tiết xấu' },
+      { id:'ob-new-eta', label:'Thời gian giao hàng mới dự kiến', placeholder:'VD: Dự kiến giao trong 5-7 ngày làm việc tới' }
+    ],
+    product_issue: [
+      { id:'ob-issue', label:'Vấn đề sản phẩm', placeholder:'VD: Màu in bị lệch so với mockup' },
+      { id:'ob-solution', label:'Giải pháp đề xuất', placeholder:'VD: Chúng tôi sẽ in lại và gửi miễn phí' }
+    ],
+    custom: [
+      { id:'ob-custom', label:'Mô tả nội dung email cần viết', placeholder:'VD: Thông báo khách rằng...' }
+    ],
+  };
+
+  const fields = fieldMap[purpose] || [];
+  fields.forEach(f => {
+    container.innerHTML += `<div>
+      <label>${f.label}</label>
+      <textarea id="${f.id}" rows="2" style="resize:none;font-size:12px;" placeholder="${f.placeholder}"></textarea>
+    </div>`;
+  });
+}
+
+async function generateOutbound() {
+  const customerEmail = document.getElementById('outbound-customer-email').value.trim();
+  const purpose = document.getElementById('outbound-purpose').value;
+  if (!customerEmail) { alert('Vui lòng nhập email khách!'); return; }
+  if (!purpose) { alert('Vui lòng chọn mục đích email!'); return; }
+  if (!outboundStore) { alert('Vui lòng chọn cửa hàng!'); return; }
+
+  const btn = document.getElementById('outbound-btn');
+  btn.disabled = true; btn.textContent = '⏳ Đang viết...';
+  document.getElementById('outbound-status').className = 'status-pill active';
+  document.getElementById('outbound-status').innerHTML = '<div class="dot pulse"></div> Đang soạn...';
+  document.getElementById('outbound-placeholder').style.display = 'none';
+  document.getElementById('outbound-result').style.display = 'flex';
+  document.getElementById('outbound-draft-original').textContent = '';
+  document.getElementById('outbound-draft-vietnamese').textContent = '';
+
+  const customerName = document.getElementById('outbound-customer-name').value.trim() || 'there';
+  const notes = document.getElementById('outbound-notes').value.trim();
+
+  // Collect dynamic fields
+  const dynFields = ['ob-size','ob-issue','ob-address','ob-reason','ob-new-eta','ob-status','ob-order-summary','ob-solution','ob-custom'];
+  const dynInfo = dynFields.map(id => {
+    const el = document.getElementById(id);
+    return el && el.value.trim() ? el.value.trim() : null;
+  }).filter(Boolean).join('\n');
+
+  // Order info from Excel
+  const orderInfo = document.getElementById('outbound-order-detail').textContent.trim();
+
+  const purposeLabels = {
+    confirm_size: 'confirm size, color, or design details',
+    confirm_address: 'confirm or clarify the shipping address',
+    confirm_phone: 'request customer phone number for delivery',
+    confirm_all: 'confirm all order details before processing',
+    order_update: 'provide an order status update',
+    delay_notice: 'notify about shipping delay',
+    product_issue: 'inform about a product issue and resolution',
+    custom: 'compose a custom message',
+  };
+
+  const storeCtx = `Store: ${outboundStore.name}
+Email: ${outboundStore.email || 'N/A'}
+Tone: ${outboundStore.tone || 'friendly'}
+Signature: ${outboundStore.signature || `Best regards,\n${outboundStore.name} Support Team`}`;
+
+  const system = `You are a customer service agent proactively reaching out to a customer on behalf of a POD store.
+Write a SHORT, professional outbound email. Max 10-12 lines including greeting and signature.
+Be warm, clear, and specific. State the purpose immediately. Make it easy for customer to respond.
+Then translate to Vietnamese.
+Respond ONLY in this exact JSON:
+{
+  "email_original": "Outbound email in English, max 12 lines, with store signature",
+  "email_vietnamese": "Vietnamese translation"
+}
+STORE INFO: ${storeCtx}`;
+
+  const userMsg = `Purpose: ${purposeLabels[purpose] || purpose}
+Customer name: ${customerName}
+Customer email: ${customerEmail}
+${dynInfo ? `Details:\n${dynInfo}` : ''}
+${orderInfo ? `Order info from system:\n${orderInfo}` : ''}
+${notes ? `Additional notes: ${notes}` : ''}`;
+
+  try {
+    const res = await fetch(CONFIG.WORKER_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1200,system,messages:[{role:'user',content:userMsg}]})
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error?.message || JSON.stringify(data));
+    const text = data.content.map(i=>i.text||'').join('');
+    const parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
+    currentOutboundDraft = parsed.email_original || '';
+    document.getElementById('outbound-draft-original').textContent = currentOutboundDraft;
+    document.getElementById('outbound-draft-vietnamese').textContent = parsed.email_vietnamese || '';
+    document.getElementById('outbound-status').className = 'status-pill';
+    document.getElementById('outbound-status').innerHTML = '<div class="dot"></div> Xong — đọc bản dịch & copy';
+  } catch(e) {
+    document.getElementById('outbound-draft-original').textContent = '⚠️ ' + e.message;
+    document.getElementById('outbound-status').className = 'status-pill';
+    document.getElementById('outbound-status').innerHTML = '<div class="dot" style="color:var(--danger)"></div> Lỗi';
+    console.error(e);
+  }
+  btn.disabled = false; btn.textContent = '✦ Viết email chủ động';
+}
+
+function copyOutboundDraft() {
+  if (!currentOutboundDraft) return;
+  navigator.clipboard.writeText(currentOutboundDraft).then(() => {
+    const btn = document.querySelector('#outbound-result .copy-btn');
+    btn.textContent = '✓ Đã copy!';
+    setTimeout(() => btn.textContent = '⎘ Copy email gốc', 2000);
+  });
+}
+
+function resetOutbound() {
+  document.getElementById('outbound-customer-email').value = '';
+  document.getElementById('outbound-customer-name').value = '';
+  document.getElementById('outbound-purpose').value = '';
+  document.getElementById('outbound-dynamic-fields').innerHTML = '';
+  document.getElementById('outbound-notes').value = '';
+  document.getElementById('outbound-order-info').style.display = 'none';
+  document.getElementById('outbound-order-detail').innerHTML = '';
+  document.getElementById('outbound-placeholder').style.display = 'flex';
+  document.getElementById('outbound-result').style.display = 'none';
+  document.getElementById('outbound-status').innerHTML = '<div class="dot"></div> Chờ thông tin...';
+  currentOutboundDraft = '';
 }
 
 // ── TRACKING ─────────────────────────────────────────
