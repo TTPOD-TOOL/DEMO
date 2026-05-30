@@ -184,6 +184,7 @@ const CONFIG = {
     <div class="sidebar-section">
       <div class="sidebar-label">Công cụ</div>
       <div class="nav-item active" onclick="showPage('email-agent')" id="nav-email"><span class="nav-icon">✉</span><span>Email Agent</span></div>
+      <div class="nav-item" onclick="showPage('creative')" id="nav-creative"><span class="nav-icon">🎨</span><span>Creative Agent</span></div>
       <div class="nav-item" onclick="showPage('history')" id="nav-history"><span class="nav-icon">📋</span><span>Lịch sử</span></div>
     </div>
     <div class="sidebar-section hidden" id="admin-nav">
@@ -319,6 +320,164 @@ const CONFIG = {
           </div>
         </div>
 
+      </div>
+    </div>
+
+
+    <!-- CREATIVE AGENT PAGE -->
+    <div id="page-creative" class="hidden">
+      <div class="topbar">
+        <div><div class="topbar-title">🎨 Creative Agent</div><div class="topbar-sub">Tạo prompt ảnh quảng cáo & ad copy cho Facebook/Instagram</div></div>
+        <div id="creative-status-badge" class="status-pill"><div class="dot"></div> Sẵn sàng</div>
+      </div>
+      <div class="content" style="display:flex;flex-direction:column;gap:14px;">
+
+        <div class="agent-grid">
+
+          <!-- LEFT: INPUT -->
+          <div class="panel">
+            <div class="panel-head">📥 Thông tin sản phẩm</div>
+            <div>
+              <label>Cửa hàng</label>
+              <select id="creative-store-select" onchange="onCreativeStoreChange()">
+                <option value="">-- Chọn cửa hàng --</option>
+              </select>
+            </div>
+
+            <div>
+              <label>Loại sản phẩm POD</label>
+              <select id="creative-product-type">
+                <option value="t-shirt">T-shirt</option>
+                <option value="hoodie">Hoodie</option>
+                <option value="mug">Mug</option>
+                <option value="tote-bag">Tote bag</option>
+                <option value="poster">Poster</option>
+                <option value="phone-case">Phone case</option>
+                <option value="other">Khác</option>
+              </select>
+            </div>
+
+            <div>
+              <label>Mô tả sản phẩm & design</label>
+              <textarea id="creative-description" rows="4" style="resize:none;font-size:13px;" placeholder="VD: Áo thun màu đen, in chữ 'Coffee is my love language' theo phong cách minimalist, font serif thanh lịch, dành cho người yêu cà phê..."></textarea>
+            </div>
+
+            <div>
+              <label>Upload ảnh sản phẩm (tuỳ chọn)</label>
+              <div id="creative-upload-area" style="border:1px dashed var(--border);border-radius:var(--radius);padding:16px;text-align:center;cursor:pointer;font-size:12px;color:var(--muted);" onclick="document.getElementById('creative-image-input').click()">
+                <div style="font-size:24px;margin-bottom:4px;">📷</div>
+                Click để upload ảnh sản phẩm
+                <input type="file" id="creative-image-input" accept="image/*" style="display:none" onchange="onCreativeImageUpload(this)"/>
+              </div>
+              <div id="creative-image-preview" class="hidden" style="margin-top:8px;position:relative;">
+                <img id="creative-preview-img" style="width:100%;max-height:160px;object-fit:contain;border-radius:var(--radius);border:1px solid var(--border);" />
+                <button onclick="removeCreativeImage()" style="position:absolute;top:4px;right:4px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:12px;">✕</button>
+              </div>
+            </div>
+
+            <div>
+              <label>Mục tiêu quảng cáo</label>
+              <select id="creative-goal">
+                <option value="awareness">Brand awareness — tăng nhận diện</option>
+                <option value="traffic">Traffic — kéo người vào store</option>
+                <option value="conversion">Conversion — thúc đẩy mua hàng</option>
+                <option value="engagement">Engagement — tương tác, like, share</option>
+              </select>
+            </div>
+
+            <div>
+              <label>Target audience</label>
+              <input id="creative-audience" placeholder="VD: Phụ nữ 25-40 tuổi, yêu cà phê, thích phong cách tối giản..." style="font-size:12px;"/>
+            </div>
+
+            <button class="analyze-btn" id="creative-btn" onclick="generateCreative()">✦ Tạo prompt & ad copy</button>
+          </div>
+
+          <!-- RIGHT: OUTPUT -->
+          <div class="panel">
+            <div class="panel-head" style="justify-content:space-between;">
+              <span>🤖 Kết quả từ Agent</span>
+              <span id="creative-output-status" class="status-pill"><div class="dot"></div> Chờ...</span>
+            </div>
+
+            <div id="creative-placeholder" style="flex:1;display:flex;align-items:center;justify-content:center;">
+              <div class="draft-placeholder">
+                <div style="font-size:32px;margin-bottom:10px;">🎨</div>
+                Điền thông tin sản phẩm<br>và nhấn tạo
+              </div>
+            </div>
+
+            <div id="creative-output" class="hidden" style="flex:1;display:flex;flex-direction:column;gap:12px;overflow-y:auto;">
+
+              <!-- IMAGE PROMPT -->
+              <div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                  <label>🖼 Prompt tạo ảnh (dùng cho Midjourney / Leonardo / Canva AI)</label>
+                  <button class="copy-btn" style="width:auto;padding:3px 10px;font-size:11px;" onclick="copyText('image-prompt-display')">⎘ Copy</button>
+                </div>
+                <div class="summary-box" id="image-prompt-display" style="font-family:var(--mono);font-size:11px;line-height:1.7;"></div>
+              </div>
+
+              <!-- NEGATIVE PROMPT -->
+              <div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                  <label>🚫 Negative prompt</label>
+                  <button class="copy-btn" style="width:auto;padding:3px 10px;font-size:11px;" onclick="copyText('negative-prompt-display')">⎘ Copy</button>
+                </div>
+                <div class="summary-box" id="negative-prompt-display" style="font-family:var(--mono);font-size:11px;line-height:1.7;color:var(--muted);"></div>
+              </div>
+
+              <div style="border-top:1px solid var(--border);padding-top:10px;">
+                <label style="margin-bottom:8px;display:block;">📢 Ad Copy cho Facebook/Instagram</label>
+
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                  <div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+                      <span style="font-size:11px;color:var(--muted);">Headline (tiêu đề)</span>
+                      <button class="copy-btn" style="width:auto;padding:2px 8px;font-size:11px;" onclick="copyText('ad-headline')">⎘</button>
+                    </div>
+                    <div class="summary-box" id="ad-headline" style="font-size:13px;font-weight:500;"></div>
+                  </div>
+                  <div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+                      <span style="font-size:11px;color:var(--muted);">Primary text</span>
+                      <button class="copy-btn" style="width:auto;padding:2px 8px;font-size:11px;" onclick="copyText('ad-primary')">⎘</button>
+                    </div>
+                    <div class="summary-box" id="ad-primary" style="font-size:12px;line-height:1.7;white-space:pre-wrap;"></div>
+                  </div>
+                  <div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+                      <span style="font-size:11px;color:var(--muted);">CTA button text</span>
+                      <button class="copy-btn" style="width:auto;padding:2px 8px;font-size:11px;" onclick="copyText('ad-cta')">⎘</button>
+                    </div>
+                    <div class="summary-box" id="ad-cta" style="font-size:12px;"></div>
+                  </div>
+                  <div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+                      <span style="font-size:11px;color:var(--muted);">Caption Instagram / Facebook post</span>
+                      <button class="copy-btn" style="width:auto;padding:2px 8px;font-size:11px;" onclick="copyText('ad-caption')">⎘</button>
+                    </div>
+                    <div class="summary-box" id="ad-caption" style="font-size:12px;line-height:1.7;white-space:pre-wrap;"></div>
+                  </div>
+                  <div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+                      <span style="font-size:11px;color:var(--muted);">Hashtags</span>
+                      <button class="copy-btn" style="width:auto;padding:2px 8px;font-size:11px;" onclick="copyText('ad-hashtags')">⎘</button>
+                    </div>
+                    <div class="summary-box" id="ad-hashtags" style="font-size:11px;color:var(--accent);line-height:1.8;"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="display:flex;gap:8px;margin-top:4px;">
+                <button class="btn" style="font-size:12px;" onclick="resetCreative()">↺ Tạo lại</button>
+                <button class="btn" style="font-size:12px;" onclick="generateVariant()">✦ Tạo thêm variant khác</button>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
       </div>
     </div>
 
@@ -493,13 +652,14 @@ async function doLogout() {
 
 // ── NAVIGATION ───────────────────────────────────────
 function showPage(page) {
-  ['email-agent','history','admin'].forEach(p => {
+  ['email-agent','creative','history','admin'].forEach(p => {
     document.getElementById('page-'+p).classList.toggle('hidden', p !== page);
     const nav = document.getElementById('nav-'+p);
     if (nav) nav.classList.toggle('active', p === page);
   });
   if (page === 'history') loadHistory();
   if (page === 'admin') loadAdminData();
+  if (page === 'creative') renderCreativeStores();
 }
 
 function switchAdminTab(tab) {
@@ -788,6 +948,161 @@ async function redraftWithNote() {
     agentState.analysis.direction = agentState.analysis.direction + '. Lưu ý thêm: ' + note;
   }
   await writeDraft();
+}
+
+// ── CREATIVE AGENT ───────────────────────────────────
+let creativeImageBase64 = null;
+let selectedCreativeStore = null;
+
+function renderCreativeStores() {
+  const sel = document.getElementById('creative-store-select');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">-- Chọn cửa hàng --</option>' +
+    stores.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+}
+
+function onCreativeStoreChange() {
+  const id = document.getElementById('creative-store-select').value;
+  selectedCreativeStore = stores.find(s => s.id === id) || null;
+}
+
+function onCreativeImageUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    creativeImageBase64 = e.target.result.split(',')[1];
+    document.getElementById('creative-preview-img').src = e.target.result;
+    document.getElementById('creative-image-preview').classList.remove('hidden');
+    document.getElementById('creative-upload-area').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeCreativeImage() {
+  creativeImageBase64 = null;
+  document.getElementById('creative-image-input').value = '';
+  document.getElementById('creative-image-preview').classList.add('hidden');
+  document.getElementById('creative-upload-area').style.display = 'block';
+}
+
+function setCreativeStatus(text, active=false) {
+  const badge = document.getElementById('creative-output-status');
+  badge.className = 'status-pill' + (active ? ' active' : '');
+  badge.innerHTML = `<div class="dot${active ? ' pulse' : ''}"></div> ${text}`;
+}
+
+async function generateCreative(extraNote='') {
+  const description = document.getElementById('creative-description').value.trim();
+  if (!description && !creativeImageBase64) { alert('Vui lòng mô tả sản phẩm hoặc upload ảnh!'); return; }
+
+  const productType = document.getElementById('creative-product-type').value;
+  const goal = document.getElementById('creative-goal').value;
+  const audience = document.getElementById('creative-audience').value.trim();
+  const storeName = selectedCreativeStore?.name || 'POD Store';
+  const storeNiche = selectedCreativeStore?.niche || 'custom print-on-demand products';
+
+  const btn = document.getElementById('creative-btn');
+  btn.disabled = true; btn.textContent = '⏳ Đang tạo...';
+  setCreativeStatus('Agent đang làm việc...', true);
+  document.getElementById('creative-placeholder').classList.add('hidden');
+  document.getElementById('creative-output').classList.remove('hidden');
+  ['image-prompt-display','negative-prompt-display','ad-headline','ad-primary','ad-cta','ad-caption','ad-hashtags'].forEach(id => {
+    document.getElementById(id).textContent = '';
+  });
+
+  const goalMap = { awareness:'brand awareness', traffic:'drive traffic to store', conversion:'purchase conversion', engagement:'social engagement' };
+  const system = `You are an expert e-commerce advertising creative director specializing in Print-on-Demand (POD) products.
+Generate detailed image generation prompts and compelling ad copy for Facebook/Instagram ads.
+Store: ${storeName} | Niche: ${storeNiche}
+Always respond ONLY in this exact JSON (no markdown, no extra text):
+{
+  "image_prompt": "Detailed Midjourney/Leonardo prompt in English. Include: subject, style, lighting, composition, colors, mood, technical specs like --ar 1:1 --v 6",
+  "negative_prompt": "Elements to exclude from the image",
+  "headline": "Short punchy headline max 40 chars",
+  "primary_text": "Compelling primary text 2-3 short paragraphs with emojis",
+  "cta": "CTA button text (Shop Now / Get Yours / Order Today etc)",
+  "caption": "Instagram/Facebook caption with storytelling angle, 3-4 sentences + emojis",
+  "hashtags": "15-20 relevant hashtags"
+}`;
+
+  try {
+    let messages;
+    if (creativeImageBase64) {
+      messages = [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: creativeImageBase64 } },
+          { type: 'text', text: `Product type: ${productType}\nDescription: ${description || 'See image'}\nAd goal: ${goalMap[goal]}\nTarget audience: ${audience || 'general POD buyers'}${extraNote ? '\nExtra note: '+extraNote : ''}\n\nAnalyze this product image and create ad creative assets.` }
+        ]
+      }];
+    } else {
+      messages = [{ role: 'user', content: `Product type: ${productType}\nDescription: ${description}\nAd goal: ${goalMap[goal]}\nTarget audience: ${audience || 'general POD buyers'}${extraNote ? '\nExtra note: '+extraNote : ''}` }];
+    }
+
+    const res = await fetch(CONFIG.WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-5', max_tokens: 1500, system, messages })
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error?.message || JSON.stringify(data));
+    if (!data.content) throw new Error('Không nhận được phản hồi.');
+
+    const text = data.content.map(i => i.text || '').join('');
+    const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+
+    document.getElementById('image-prompt-display').textContent = parsed.image_prompt || '';
+    document.getElementById('negative-prompt-display').textContent = parsed.negative_prompt || '';
+    document.getElementById('ad-headline').textContent = parsed.headline || '';
+    document.getElementById('ad-primary').textContent = parsed.primary_text || '';
+    document.getElementById('ad-cta').textContent = parsed.cta || '';
+    document.getElementById('ad-caption').textContent = parsed.caption || '';
+    document.getElementById('ad-hashtags').textContent = parsed.hashtags || '';
+
+    setCreativeStatus('Xong — copy từng phần để dùng');
+
+    if (sb && currentUser) {
+      await sb.from('ad_creatives').insert({
+        user_id: currentUser.id, user_email: currentUser.email,
+        store_id: selectedCreativeStore?.id, store_name: selectedCreativeStore?.name,
+        product_description: description,
+        image_prompt: parsed.image_prompt,
+        ad_copy: { headline: parsed.headline, primary_text: parsed.primary_text, cta: parsed.cta, caption: parsed.caption, hashtags: parsed.hashtags },
+        platform: 'facebook'
+      });
+    }
+
+  } catch(e) {
+    document.getElementById('image-prompt-display').textContent = '⚠️ ' + e.message;
+    setCreativeStatus('Lỗi!');
+    console.error(e);
+  }
+
+  btn.disabled = false; btn.textContent = '✦ Tạo prompt & ad copy';
+}
+
+function resetCreative() {
+  document.getElementById('creative-description').value = '';
+  document.getElementById('creative-audience').value = '';
+  removeCreativeImage();
+  document.getElementById('creative-placeholder').classList.remove('hidden');
+  document.getElementById('creative-output').classList.add('hidden');
+  setCreativeStatus('Sẵn sàng');
+}
+
+async function generateVariant() {
+  const note = prompt('Yêu cầu variant khác (VD: tone vui vẻ hơn, nhấn mạnh giá, hướng đến gift...)') || '';
+  await generateCreative(note);
+}
+
+function copyText(elementId) {
+  const el = document.getElementById(elementId);
+  if (!el) return;
+  navigator.clipboard.writeText(el.textContent).then(() => {
+    const btns = document.querySelectorAll(`button[onclick="copyText('${elementId}')"]`);
+    btns.forEach(b => { b.textContent = '✓'; setTimeout(() => b.textContent = '⎘', 1500); });
+  });
 }
 
 // ── HISTORY ──────────────────────────────────────────
