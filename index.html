@@ -878,7 +878,7 @@ Analyze the full email thread provided and respond ONLY in this exact JSON (no m
   "history_summary": "Tóm tắt lịch sử trao đổi bằng tiếng Việt, ngắn gọn 2-3 câu",
   "latest_request": "Nội dung/yêu cầu mới nhất của khách bằng tiếng Việt, 1-2 câu",
   "matched_scenario": "Tên kịch bản phù hợp nhất (nếu có), hoặc null",
-  "direction": "Đề xuất hướng xử lý cụ thể bằng tiếng Việt. Rõ ràng, actionable. Áp dụng đúng kịch bản nếu match."
+  "direction": "Hướng xử lý bằng tiếng Việt. Trình bày theo gạch đầu dòng (dùng ký tự -), mỗi dòng 1 hành động cụ thể, tối đa 5 dòng. Ngắn gọn, actionable. Áp dụng đúng kịch bản nếu match."
 }
 
 STORE INFO: ${storeCtx}
@@ -905,7 +905,14 @@ ${trackingCtx}${scenariosCtx}`;
 
     document.getElementById('history-summary').textContent = parsed.history_summary || '';
     document.getElementById('latest-request').textContent = parsed.latest_request || '';
-    document.getElementById('direction-display').textContent = parsed.direction || '';
+    const dirText = parsed.direction || '';
+    const dirEl = document.getElementById('direction-display');
+    dirEl.innerHTML = dirText.split('\n').map(line => {
+      const t = line.trim();
+      if (!t) return '';
+      if (t.startsWith('-')) return `<div style="display:flex;gap:6px;margin-bottom:3px;"><span style="color:var(--accent2);flex-shrink:0;">—</span><span>${t.slice(1).trim()}</span></div>`;
+      return `<div style="margin-bottom:3px;">${t}</div>`;
+    }).join('');
     document.getElementById('feedback-input').value = '';
 
     setStatus('Bước 3 — Kiểm tra hướng xử lý');
@@ -945,7 +952,7 @@ Use this tracking information when suggesting how to handle the customer's inqui
 The staff has reviewed your suggested direction and provided feedback. Update the direction accordingly.
 Respond ONLY in this exact JSON:
 {
-  "direction": "Hướng xử lý đã được cập nhật theo góp ý, bằng tiếng Việt"
+  "direction": "Hướng xử lý cập nhật bằng tiếng Việt, theo gạch đầu dòng (dùng ký tự -), tối đa 5 dòng ngắn gọn"
 }
 STORE INFO: ${storeCtx}
 POLICIES: ${policyCtx}`;
@@ -957,8 +964,15 @@ Staff feedback: ${feedback}`;
   try {
     const text = await callClaude(system, userMsg);
     const parsed = JSON.parse(text.replace(/\`\`\`json|\`\`\`/g, '').trim());
-    agentState.analysis.direction = parsed.direction;
-    document.getElementById('direction-display').textContent = parsed.direction;
+    const updatedDir = parsed.direction || '';
+    const dirEl2 = document.getElementById('direction-display');
+    dirEl2.innerHTML = updatedDir.split('\n').map(line => {
+      const t = line.trim();
+      if (!t) return '';
+      if (t.startsWith('-')) return `<div style="display:flex;gap:6px;margin-bottom:3px;"><span style="color:var(--accent2);flex-shrink:0;">—</span><span>${t.slice(1).trim()}</span></div>`;
+      return `<div style="margin-bottom:3px;">${t}</div>`;
+    }).join('');
+    agentState.analysis.direction = updatedDir;
     document.getElementById('feedback-input').value = '';
     setStatus('Đã cập nhật — kiểm tra lại');
   } catch(e) {
@@ -984,11 +998,16 @@ async function writeDraft() {
 
   const { storeCtx, policyCtx } = buildStoreContext();
   const system = `You are a professional customer service agent for a POD store on ShopBase.
-Write a reply email in ${agentState.detectedLang} following the approved handling direction.
+Write a SHORT reply email in ${agentState.detectedLang} following the approved handling direction.
+EMAIL RULES:
+- Maximum 10-15 lines total (including greeting and signature)
+- One short paragraph per idea, no long blocks of text
+- Be warm but concise — no unnecessary filler phrases
+- End with the store signature
 Then translate the full email to Vietnamese.
 Respond ONLY in this exact JSON (no markdown, no extra text):
 {
-  "email_original": "Full reply email in ${agentState.detectedLang} with store signature at the end",
+  "email_original": "Short reply email in ${agentState.detectedLang} with store signature. Max 15 lines.",
   "email_vietnamese": "Full Vietnamese translation of the email above"
 }
 STORE INFO: ${storeCtx}
