@@ -4,307 +4,192 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>POD Toolkit — Email Agent</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-  /* ── CONFIG ─────────────────────────────────────── */
   :root {
-    --bg:        #0f0f10;
-    --bg2:       #18181b;
-    --bg3:       #222228;
-    --border:    #2e2e36;
-    --text:      #e8e8f0;
-    --muted:     #7c7c8e;
-    --accent:    #6c63ff;
-    --accent2:   #4ade80;
-    --danger:    #f87171;
-    --warn:      #fbbf24;
-    --radius:    10px;
-    --font:      'DM Sans', sans-serif;
-    --mono:      'DM Mono', monospace;
+    --bg:#0f0f10; --bg2:#18181b; --bg3:#222228; --border:#2e2e36;
+    --text:#e8e8f0; --muted:#7c7c8e; --accent:#6c63ff; --accent2:#4ade80;
+    --danger:#f87171; --warn:#fbbf24; --radius:10px;
+    --font:'DM Sans',sans-serif; --mono:'DM Mono',monospace;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; line-height: 1.6; }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.6;}
+  .hidden{display:none!important;}
 
-  /* ── UTILS ─────────────────────────────────────── */
-  .hidden { display: none !important; }
-  .btn {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 8px 16px; border-radius: var(--radius);
-    border: 1px solid var(--border); background: var(--bg3);
-    color: var(--text); font-family: var(--font); font-size: 13px;
-    cursor: pointer; transition: all .15s;
-  }
-  .btn:hover { background: var(--bg2); border-color: var(--accent); }
-  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .btn.primary:hover { opacity: .88; }
-  .btn.danger { background: transparent; border-color: var(--danger); color: var(--danger); }
-  .btn.danger:hover { background: #f8717118; }
-  .btn:disabled { opacity: .45; cursor: not-allowed; }
-  .tag {
-    display: inline-block; font-size: 11px; font-weight: 500;
-    padding: 2px 8px; border-radius: 20px;
-  }
-  .tag-blue   { background: #1e3a5f; color: #93c5fd; }
-  .tag-amber  { background: #3a2e1a; color: #fcd34d; }
-  .tag-red    { background: #3a1a1a; color: #fca5a5; }
-  .tag-green  { background: #1a3a24; color: #86efac; }
-  .tag-teal   { background: #1a3338; color: #5eead4; }
-  .tag-gray   { background: #222228; color: #a1a1aa; }
-  input, textarea, select {
-    width: 100%; padding: 9px 12px; border-radius: var(--radius);
-    border: 1px solid var(--border); background: var(--bg3);
-    color: var(--text); font-family: var(--font); font-size: 13px;
-    outline: none; transition: border .15s;
-  }
-  input:focus, textarea:focus { border-color: var(--accent); }
-  label { font-size: 12px; color: var(--muted); font-weight: 500; display: block; margin-bottom: 4px; }
+  /* BUTTONS */
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg3);color:var(--text);font-family:var(--font);font-size:13px;cursor:pointer;transition:all .15s;}
+  .btn:hover{background:var(--bg2);border-color:var(--accent);}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .btn.primary:hover{opacity:.88;}
+  .btn.danger{background:transparent;border-color:var(--danger);color:var(--danger);}
+  .btn.danger:hover{background:#f8717118;}
+  .btn.sm{padding:4px 10px;font-size:11px;}
+  .btn:disabled{opacity:.45;cursor:not-allowed;}
 
-  /* ── LOGIN ─────────────────────────────────────── */
-  #login-screen {
-    min-height: 100vh; display: flex; align-items: center;
-    justify-content: center; padding: 24px;
-  }
-  .login-card {
-    width: 100%; max-width: 380px;
-    background: var(--bg2); border: 1px solid var(--border);
-    border-radius: 16px; padding: 40px 32px;
-  }
-  .login-logo {
-    font-size: 22px; font-weight: 600; letter-spacing: -.5px;
-    color: var(--text); margin-bottom: 8px;
-  }
-  .login-logo span { color: var(--accent); }
-  .login-sub { font-size: 13px; color: var(--muted); margin-bottom: 28px; }
-  .login-field { margin-bottom: 14px; }
-  .login-btn {
-    width: 100%; padding: 10px; border-radius: var(--radius);
-    background: var(--accent); border: none; color: #fff;
-    font-family: var(--font); font-size: 14px; font-weight: 500;
-    cursor: pointer; margin-top: 6px; transition: opacity .15s;
-  }
-  .login-btn:hover { opacity: .88; }
-  .login-err { font-size: 12px; color: var(--danger); margin-top: 10px; text-align: center; }
+  /* TAGS */
+  .tag{display:inline-block;font-size:11px;font-weight:500;padding:2px 8px;border-radius:20px;}
+  .tag-blue{background:#1e3a5f;color:#93c5fd;} .tag-amber{background:#3a2e1a;color:#fcd34d;}
+  .tag-red{background:#3a1a1a;color:#fca5a5;} .tag-green{background:#1a3a24;color:#86efac;}
+  .tag-teal{background:#1a3338;color:#5eead4;} .tag-gray{background:#222228;color:#a1a1aa;}
 
-  /* ── MAIN LAYOUT ────────────────────────────────── */
-  #app { display: flex; min-height: 100vh; }
+  /* INPUTS */
+  input,textarea,select{width:100%;padding:9px 12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg3);color:var(--text);font-family:var(--font);font-size:13px;outline:none;transition:border .15s;}
+  input:focus,textarea:focus,select:focus{border-color:var(--accent);}
+  select option{background:var(--bg3);}
+  label{font-size:12px;color:var(--muted);font-weight:500;display:block;margin-bottom:4px;}
 
-  /* ── SIDEBAR ─────────────────────────────────────*/
-  .sidebar {
-    width: 220px; min-height: 100vh; background: var(--bg2);
-    border-right: 1px solid var(--border); display: flex;
-    flex-direction: column; padding: 20px 0; flex-shrink: 0;
-  }
-  .sidebar-logo {
-    padding: 0 20px 20px; font-size: 16px; font-weight: 600;
-    letter-spacing: -.4px; border-bottom: 1px solid var(--border);
-    margin-bottom: 12px;
-  }
-  .sidebar-logo span { color: var(--accent); }
-  .sidebar-section { padding: 0 12px; margin-bottom: 4px; }
-  .sidebar-label { font-size: 10px; color: var(--muted); font-weight: 600; letter-spacing: .08em; padding: 0 8px; margin: 10px 0 4px; }
-  .nav-item {
-    display: flex; align-items: center; gap: 8px;
-    padding: 8px 10px; border-radius: var(--radius);
-    color: var(--muted); cursor: pointer; transition: all .12s;
-    font-size: 13px; user-select: none;
-  }
-  .nav-item:hover { background: var(--bg3); color: var(--text); }
-  .nav-item.active { background: #6c63ff18; color: var(--accent); }
-  .nav-icon { width: 16px; text-align: center; font-size: 15px; }
-  .sidebar-bottom {
-    margin-top: auto; padding: 16px 12px 0;
-    border-top: 1px solid var(--border);
-  }
-  .user-chip {
-    display: flex; align-items: center; gap: 8px;
-    padding: 8px 10px; border-radius: var(--radius);
-    background: var(--bg3);
-  }
-  .user-avatar {
-    width: 28px; height: 28px; border-radius: 50%;
-    background: var(--accent); display: flex; align-items: center;
-    justify-content: center; font-size: 12px; font-weight: 600;
-    color: #fff; flex-shrink: 0;
-  }
-  .user-info { flex: 1; min-width: 0; }
-  .user-name { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .user-role { font-size: 10px; color: var(--muted); }
-  .logout-btn { cursor: pointer; color: var(--muted); font-size: 14px; padding: 2px; }
-  .logout-btn:hover { color: var(--danger); }
+  /* LOGIN */
+  #login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+  .login-card{width:100%;max-width:380px;background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:40px 32px;}
+  .login-logo{font-size:22px;font-weight:600;letter-spacing:-.5px;margin-bottom:8px;}
+  .login-logo span{color:var(--accent);}
+  .login-sub{font-size:13px;color:var(--muted);margin-bottom:28px;}
+  .login-field{margin-bottom:14px;}
+  .login-btn{width:100%;padding:10px;border-radius:var(--radius);background:var(--accent);border:none;color:#fff;font-family:var(--font);font-size:14px;font-weight:500;cursor:pointer;margin-top:6px;transition:opacity .15s;}
+  .login-btn:hover{opacity:.88;}
+  .err-msg{font-size:12px;color:var(--danger);margin-top:10px;text-align:center;}
 
-  /* ── MAIN CONTENT ───────────────────────────────── */
-  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-  .topbar {
-    padding: 16px 28px; border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: space-between;
-    background: var(--bg2);
-  }
-  .topbar-title { font-size: 15px; font-weight: 600; }
-  .topbar-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
-  .content { flex: 1; padding: 24px 28px; overflow-y: auto; }
+  /* LAYOUT */
+  #app{display:flex;min-height:100vh;}
+  .sidebar{width:220px;min-height:100vh;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:20px 0;flex-shrink:0;}
+  .sidebar-logo{padding:0 20px 20px;font-size:16px;font-weight:600;letter-spacing:-.4px;border-bottom:1px solid var(--border);margin-bottom:12px;}
+  .sidebar-logo span{color:var(--accent);}
+  .sidebar-section{padding:0 12px;margin-bottom:4px;}
+  .sidebar-label{font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.08em;padding:0 8px;margin:10px 0 4px;}
+  .nav-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--radius);color:var(--muted);cursor:pointer;transition:all .12s;font-size:13px;user-select:none;}
+  .nav-item:hover{background:var(--bg3);color:var(--text);}
+  .nav-item.active{background:#6c63ff18;color:var(--accent);}
+  .nav-icon{width:16px;text-align:center;font-size:15px;}
+  .sidebar-bottom{margin-top:auto;padding:16px 12px 0;border-top:1px solid var(--border);}
+  .user-chip{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--radius);background:var(--bg3);}
+  .user-avatar{width:28px;height:28px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#fff;flex-shrink:0;}
+  .user-info{flex:1;min-width:0;}
+  .user-name{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .user-role{font-size:10px;color:var(--muted);}
+  .logout-btn{cursor:pointer;color:var(--muted);font-size:14px;padding:2px;}
+  .logout-btn:hover{color:var(--danger);}
+  .main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+  .topbar{padding:16px 28px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg2);}
+  .topbar-title{font-size:15px;font-weight:600;}
+  .topbar-sub{font-size:12px;color:var(--muted);margin-top:1px;}
+  .content{flex:1;padding:24px 28px;overflow-y:auto;}
 
-  /* ── EMAIL AGENT ────────────────────────────────── */
-  .agent-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; height: calc(100vh - 160px); }
-  .panel {
-    background: var(--bg2); border: 1px solid var(--border);
-    border-radius: 12px; padding: 18px; display: flex;
-    flex-direction: column; gap: 12px; overflow: hidden;
-  }
-  .panel-head { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .05em; }
-  .store-input { font-size: 12px; }
-  .email-input { flex: 1; resize: none; min-height: 160px; font-size: 13px; line-height: 1.6; }
-  .analyze-btn {
-    width: 100%; padding: 10px; border-radius: var(--radius);
-    background: var(--accent); border: none; color: #fff;
-    font-family: var(--font); font-size: 13px; font-weight: 500;
-    cursor: pointer; display: flex; align-items: center;
-    justify-content: center; gap: 6px; transition: opacity .15s;
-  }
-  .analyze-btn:hover { opacity: .88; }
-  .analyze-btn:disabled { opacity: .45; cursor: not-allowed; }
-  .status-pill {
-    font-size: 11px; padding: 4px 10px; border-radius: 20px;
-    background: var(--bg3); border: 1px solid var(--border);
-    color: var(--muted); display: inline-flex; align-items: center; gap: 5px;
-  }
-  .status-pill.active { border-color: var(--accent2); color: var(--accent2); }
-  .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-  .dot.pulse { animation: pulse 1s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
-  .summary-box {
-    background: var(--bg3); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 10px 12px;
-    font-size: 12px; color: var(--muted); line-height: 1.6;
-  }
-  .draft-box {
-    flex: 1; background: var(--bg3); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 12px;
-    font-size: 13px; line-height: 1.7; white-space: pre-wrap;
-    overflow-y: auto; color: var(--text);
-  }
-  .draft-placeholder { color: var(--muted); font-size: 13px; text-align: center; margin: auto; padding: 24px; }
-  .copy-btn {
-    width: 100%; padding: 8px; border-radius: var(--radius);
-    border: 1px solid var(--border); background: transparent;
-    color: var(--muted); font-family: var(--font); font-size: 12px;
-    cursor: pointer; display: flex; align-items: center;
-    justify-content: center; gap: 6px; transition: all .15s;
-  }
-  .copy-btn:hover { border-color: var(--accent2); color: var(--accent2); }
-  .cat-row { display: flex; gap: 5px; flex-wrap: wrap; }
+  /* PANELS */
+  .panel{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:12px;overflow:hidden;}
+  .panel-head{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.05em;}
 
-  /* ── HISTORY ─────────────────────────────────────*/
-  .history-list { display: flex; flex-direction: column; gap: 10px; }
-  .history-card {
-    background: var(--bg2); border: 1px solid var(--border);
-    border-radius: 10px; padding: 14px 16px; cursor: pointer;
-    transition: border-color .12s;
-  }
-  .history-card:hover { border-color: var(--accent); }
-  .history-meta { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
-  .history-time { font-size: 11px; color: var(--muted); font-family: var(--mono); }
-  .history-summary { font-size: 13px; color: var(--text); margin-bottom: 6px; }
-  .history-draft { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* EMAIL AGENT */
+  .agent-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;height:calc(100vh - 160px);}
+  .email-input{flex:1;resize:none;min-height:160px;font-size:13px;line-height:1.6;}
+  .analyze-btn{width:100%;padding:10px;border-radius:var(--radius);background:var(--accent);border:none;color:#fff;font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:opacity .15s;}
+  .analyze-btn:hover{opacity:.88;}
+  .analyze-btn:disabled{opacity:.45;cursor:not-allowed;}
+  .status-pill{font-size:11px;padding:4px 10px;border-radius:20px;background:var(--bg3);border:1px solid var(--border);color:var(--muted);display:inline-flex;align-items:center;gap:5px;}
+  .status-pill.active{border-color:var(--accent2);color:var(--accent2);}
+  .dot{width:6px;height:6px;border-radius:50%;background:currentColor;}
+  .dot.pulse{animation:pulse 1s infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .summary-box{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;font-size:12px;color:var(--muted);line-height:1.6;}
+  .draft-box{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:12px;font-size:13px;line-height:1.7;white-space:pre-wrap;overflow-y:auto;color:var(--text);}
+  .draft-placeholder{color:var(--muted);font-size:13px;text-align:center;margin:auto;padding:24px;}
+  .copy-btn{width:100%;padding:8px;border-radius:var(--radius);border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--font);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s;}
+  .copy-btn:hover{border-color:var(--accent2);color:var(--accent2);}
+  .cat-row{display:flex;gap:5px;flex-wrap:wrap;}
 
-  /* ── ADMIN ─────────────────────────────────────── */
-  .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-  .stat-card {
-    background: var(--bg2); border: 1px solid var(--border);
-    border-radius: 12px; padding: 20px;
-  }
-  .stat-num { font-size: 28px; font-weight: 600; color: var(--text); font-family: var(--mono); }
-  .stat-label { font-size: 12px; color: var(--muted); margin-top: 2px; }
-  .user-table { width: 100%; border-collapse: collapse; }
-  .user-table th { font-size: 11px; color: var(--muted); font-weight: 600; letter-spacing: .05em; padding: 8px 12px; border-bottom: 1px solid var(--border); text-align: left; }
-  .user-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 13px; }
-  .user-table tr:last-child td { border-bottom: none; }
-  .admin-log-item { padding: 10px 0; border-bottom: 1px solid var(--border); display: flex; gap: 12px; align-items: flex-start; }
-  .admin-log-item:last-child { border-bottom: none; }
-  .log-badge { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 4px; background: #6c63ff22; color: var(--accent); flex-shrink: 0; margin-top: 2px; font-family: var(--mono); }
-  .log-content { flex: 1; font-size: 12px; }
-  .log-user { font-weight: 500; }
-  .log-time { color: var(--muted); font-size: 11px; margin-top: 1px; font-family: var(--mono); }
+  /* STORE SELECTOR */
+  .store-selector-bar{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--bg3);border-radius:var(--radius);border:1px solid var(--border);}
+  .store-logo{width:32px;height:32px;border-radius:8px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0;}
+  .store-info-text{flex:1;min-width:0;}
+  .store-name-text{font-size:13px;font-weight:500;}
+  .store-email-text{font-size:11px;color:var(--muted);}
 
-  /* ── ADD USER MODAL ──────────────────────────────*/
-  .modal-overlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,.7);
-    display: flex; align-items: center; justify-content: center;
-    z-index: 100; padding: 24px;
-  }
-  .modal {
-    background: var(--bg2); border: 1px solid var(--border);
-    border-radius: 14px; padding: 28px; width: 100%; max-width: 400px;
-  }
-  .modal-title { font-size: 16px; font-weight: 600; margin-bottom: 20px; }
-  .modal-field { margin-bottom: 14px; }
-  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+  /* HISTORY */
+  .history-list{display:flex;flex-direction:column;gap:10px;}
+  .history-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;cursor:pointer;transition:border-color .12s;}
+  .history-card:hover{border-color:var(--accent);}
+  .history-meta{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+  .history-time{font-size:11px;color:var(--muted);font-family:var(--mono);}
+  .history-store{font-size:11px;color:var(--accent);font-weight:500;}
+  .history-summary{font-size:13px;margin-bottom:4px;}
+  .history-draft{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 
-  /* ── RESPONSIVE ─────────────────────────────────*/
-  @media (max-width: 768px) {
-    .sidebar { width: 60px; }
-    .sidebar-logo, .nav-item span, .sidebar-label, .user-info, .sidebar-section .nav-item span { display: none; }
-    .agent-grid, .admin-grid { grid-template-columns: 1fr; }
+  /* ADMIN */
+  .admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;}
+  .stat-num{font-size:28px;font-weight:600;font-family:var(--mono);}
+  .stat-label{font-size:12px;color:var(--muted);margin-top:2px;}
+  .data-table{width:100%;border-collapse:collapse;}
+  .data-table th{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.05em;padding:8px 12px;border-bottom:1px solid var(--border);text-align:left;}
+  .data-table td{padding:10px 12px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle;}
+  .data-table tr:last-child td{border-bottom:none;}
+  .log-item{padding:10px 0;border-bottom:1px solid var(--border);display:flex;gap:12px;}
+  .log-item:last-child{border-bottom:none;}
+  .log-badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;background:#6c63ff22;color:var(--accent);flex-shrink:0;margin-top:2px;font-family:var(--mono);}
+  .log-content{flex:1;font-size:12px;}
+  .log-time{color:var(--muted);font-size:11px;margin-top:1px;font-family:var(--mono);}
+
+  /* TABS */
+  .tab-bar{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:20px;}
+  .tab{padding:8px 16px;font-size:13px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;}
+  .tab:hover{color:var(--text);}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+  /* MODAL */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:100;padding:24px;}
+  .modal{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:28px;width:100%;max-width:460px;max-height:90vh;overflow-y:auto;}
+  .modal-title{font-size:16px;font-weight:600;margin-bottom:20px;}
+  .modal-field{margin-bottom:14px;}
+  .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;}
+
+  /* POLICY EDITOR */
+  .policy-section{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px;}
+  .policy-title{font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;}
+  .save-indicator{font-size:11px;color:var(--accent2);display:none;}
+
+  @media(max-width:768px){
+    .sidebar{width:60px;}
+    .sidebar-logo,.nav-item span,.sidebar-label,.user-info{display:none;}
+    .agent-grid,.admin-grid{grid-template-columns:1fr;}
   }
 </style>
 </head>
 <body>
 
-<!-- ══ CONFIG ══════════════════════════════════════════════════════════ -->
 <script>
 const CONFIG = {
   SUPABASE_URL: 'https://agormhbqxwkbojjxssay.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFnb3JtaGJxeHdrYm9qanhzc2F5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwODE3MjUsImV4cCI6MjA5NTY1NzcyNX0.IkFtUMCnpYvHFuPEIEUS7Dy0ELFnA6V4ail76ZpDu7U',
-
+  WORKER_URL: 'https://solitary-surf-52e3.trinhdxbk56.workers.dev',
   ADMIN_EMAIL: 'trinhdxbk56@yahoo.com',
-  DEFAULT_STORE_INFO: 'POD store selling custom print-on-demand products. Shipping: 7-14 business days. Refund policy: 30 days for defective/wrong items. Platform: ShopBase.',
 };
 </script>
-<!-- ════════════════════════════════════════════════════════════════════ -->
 
-<!-- LOGIN SCREEN -->
+<!-- LOGIN -->
 <div id="login-screen">
   <div class="login-card">
     <div class="login-logo">POD <span>Toolkit</span></div>
     <div class="login-sub">Đăng nhập để vào workspace của bạn</div>
-    <div class="login-field">
-      <label>Email</label>
-      <input type="email" id="login-email" placeholder="ten@email.com" />
-    </div>
-    <div class="login-field">
-      <label>Mật khẩu</label>
-      <input type="password" id="login-pass" placeholder="••••••••" />
-    </div>
+    <div class="login-field"><label>Email</label><input type="email" id="login-email" placeholder="ten@email.com"/></div>
+    <div class="login-field"><label>Mật khẩu</label><input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"/></div>
     <button class="login-btn" onclick="doLogin()">Đăng nhập</button>
-    <div class="login-err hidden" id="login-err"></div>
+    <div class="err-msg hidden" id="login-err"></div>
   </div>
 </div>
 
-<!-- MAIN APP -->
+<!-- APP -->
 <div id="app" class="hidden">
-
-  <!-- SIDEBAR -->
   <div class="sidebar">
     <div class="sidebar-logo">POD <span>Toolkit</span></div>
-
     <div class="sidebar-section">
       <div class="sidebar-label">Công cụ</div>
-      <div class="nav-item active" onclick="showPage('email-agent')" id="nav-email">
-        <span class="nav-icon">✉</span><span>Email Agent</span>
-      </div>
-      <div class="nav-item" onclick="showPage('history')" id="nav-history">
-        <span class="nav-icon">📋</span><span>Lịch sử</span>
-      </div>
+      <div class="nav-item active" onclick="showPage('email-agent')" id="nav-email"><span class="nav-icon">✉</span><span>Email Agent</span></div>
+      <div class="nav-item" onclick="showPage('history')" id="nav-history"><span class="nav-icon">📋</span><span>Lịch sử</span></div>
     </div>
-
-    <div class="sidebar-section" id="admin-nav" style="display:none">
+    <div class="sidebar-section hidden" id="admin-nav">
       <div class="sidebar-label">Quản trị</div>
-      <div class="nav-item" onclick="showPage('admin')" id="nav-admin">
-        <span class="nav-icon">⚙</span><span>Admin Panel</span>
-      </div>
+      <div class="nav-item" onclick="showPage('admin')" id="nav-admin"><span class="nav-icon">⚙</span><span>Admin Panel</span></div>
     </div>
-
     <div class="sidebar-bottom">
       <div class="user-chip">
         <div class="user-avatar" id="user-avatar">?</div>
@@ -317,63 +202,66 @@ const CONFIG = {
     </div>
   </div>
 
-  <!-- MAIN -->
   <div class="main">
 
     <!-- EMAIL AGENT PAGE -->
     <div id="page-email-agent">
       <div class="topbar">
-        <div>
-          <div class="topbar-title">✉ Email Agent</div>
-          <div class="topbar-sub">Phân tích email khách hàng & soạn phản hồi tiếng Anh</div>
-        </div>
-        <div id="agent-status" class="status-pill">
-          <div class="dot"></div> Sẵn sàng
-        </div>
+        <div><div class="topbar-title">✉ Email Agent</div><div class="topbar-sub">Chọn cửa hàng → dán email → nhận draft phản hồi</div></div>
+        <div id="agent-status-badge" class="status-pill"><div class="dot"></div> Sẵn sàng</div>
       </div>
       <div class="content">
         <div class="agent-grid">
 
-          <!-- LEFT: INPUT -->
+          <!-- LEFT -->
           <div class="panel">
-            <div class="panel-head">📥 Email khách hàng</div>
+            <div class="panel-head">📥 Thông tin & Email khách</div>
+
+            <!-- Store selector -->
             <div>
-              <label>Thông tin cửa hàng</label>
-              <textarea class="store-input" id="store-info" rows="3" style="resize:none;font-size:12px;" placeholder="VD: Store TRENDIFY, bán áo thun & hoodie POD..."></textarea>
+              <label>Cửa hàng</label>
+              <select id="store-select" onchange="onStoreChange()">
+                <option value="">-- Đang tải cửa hàng... --</option>
+              </select>
             </div>
+
+            <!-- Store preview -->
+            <div id="store-preview" class="store-selector-bar hidden">
+              <div class="store-logo" id="preview-logo">?</div>
+              <div class="store-info-text">
+                <div class="store-name-text" id="preview-name">—</div>
+                <div class="store-email-text" id="preview-email">—</div>
+              </div>
+              <span class="tag tag-green" id="preview-tone">friendly</span>
+            </div>
+
+            <!-- Customer email -->
             <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
-              <label>Nội dung email khách</label>
-              <textarea class="email-input" id="customer-email" placeholder="Dán email khách vào đây...&#10;&#10;VD: Hi, I ordered 2 weeks ago and haven't received it. My order #1234. Please help!"></textarea>
+              <label>Nội dung email khách hàng</label>
+              <textarea class="email-input" id="customer-email" placeholder="Dán email khách vào đây...&#10;&#10;VD: Hi, I placed an order 2 weeks ago and still haven't received it. Order #1234. Can you help?"></textarea>
             </div>
-            <button class="analyze-btn" id="analyze-btn" onclick="analyzeEmail()">
-              ✦ Phân tích & Soạn phản hồi
-            </button>
+
+            <button class="analyze-btn" id="analyze-btn" onclick="analyzeEmail()">✦ Phân tích & Soạn phản hồi</button>
           </div>
 
-          <!-- RIGHT: OUTPUT -->
+          <!-- RIGHT -->
           <div class="panel">
             <div class="panel-head" style="justify-content:space-between;">
               <span>🤖 Phản hồi của Agent</span>
-              <span id="agent-status-badge" class="status-pill"><div class="dot"></div> Chờ email...</span>
+              <span id="output-status" class="status-pill"><div class="dot"></div> Chờ email...</span>
             </div>
 
             <div id="output-placeholder" style="flex:1;display:flex;align-items:center;justify-content:center;">
               <div class="draft-placeholder">
                 <div style="font-size:32px;margin-bottom:10px;">📭</div>
-                Dán email khách vào bên trái<br>và nhấn phân tích
+                Chọn cửa hàng & dán email<br>rồi nhấn phân tích
               </div>
             </div>
 
             <div id="output-result" class="hidden" style="flex:1;display:flex;flex-direction:column;gap:10px;">
-              <div>
-                <label>Phân loại vấn đề</label>
-                <div class="cat-row" id="cat-display"></div>
-              </div>
-              <div>
-                <label>Tóm tắt (Tiếng Việt)</label>
-                <div class="summary-box" id="summary-display"></div>
-              </div>
-              <div>
+              <div><label>Phân loại vấn đề</label><div class="cat-row" id="cat-display"></div></div>
+              <div><label>Tóm tắt (Tiếng Việt)</label><div class="summary-box" id="summary-display"></div></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
                 <label>Draft email phản hồi (Tiếng Anh)</label>
                 <div class="draft-box" id="draft-display"></div>
               </div>
@@ -387,64 +275,74 @@ const CONFIG = {
 
     <!-- HISTORY PAGE -->
     <div id="page-history" class="hidden">
-      <div class="topbar">
-        <div>
-          <div class="topbar-title">📋 Lịch sử</div>
-          <div class="topbar-sub">Các email đã phân tích của bạn</div>
-        </div>
-      </div>
-      <div class="content">
-        <div id="history-list" class="history-list">
-          <div style="color:var(--muted);font-size:13px;">Đang tải...</div>
-        </div>
-      </div>
+      <div class="topbar"><div><div class="topbar-title">📋 Lịch sử</div><div class="topbar-sub">Email đã xử lý của bạn</div></div></div>
+      <div class="content"><div id="history-list" class="history-list"><div style="color:var(--muted)">Đang tải...</div></div></div>
     </div>
 
     <!-- ADMIN PAGE -->
     <div id="page-admin" class="hidden">
       <div class="topbar">
-        <div>
-          <div class="topbar-title">⚙ Admin Panel</div>
-          <div class="topbar-sub">Quản lý nhân viên & xem hoạt động</div>
-        </div>
-        <button class="btn primary" onclick="showAddUserModal()">+ Thêm nhân viên</button>
+        <div><div class="topbar-title">⚙ Admin Panel</div><div class="topbar-sub">Quản lý store, chính sách & nhân viên</div></div>
       </div>
-      <div class="content" style="display:flex;flex-direction:column;gap:20px;">
+      <div class="content">
+        <div class="tab-bar">
+          <div class="tab active" onclick="switchAdminTab('stores')" id="tab-stores">🏪 Cửa hàng</div>
+          <div class="tab" onclick="switchAdminTab('policy')" id="tab-policy">📜 Chính sách chung</div>
+          <div class="tab" onclick="switchAdminTab('staff')" id="tab-staff">👥 Nhân viên</div>
+          <div class="tab" onclick="switchAdminTab('logs')" id="tab-logs">📊 Hoạt động</div>
+        </div>
 
-        <!-- Stats -->
-        <div class="admin-grid">
-          <div class="stat-card">
-            <div class="stat-num" id="stat-users">—</div>
-            <div class="stat-label">Nhân viên đang hoạt động</div>
+        <!-- STORES TAB -->
+        <div id="admin-tab-stores">
+          <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
+            <button class="btn primary" onclick="openStoreModal()">+ Thêm cửa hàng</button>
           </div>
-          <div class="stat-card">
-            <div class="stat-num" id="stat-emails">—</div>
-            <div class="stat-label">Email đã xử lý hôm nay</div>
+          <div class="panel" style="height:auto;">
+            <table class="data-table">
+              <thead><tr><th>Tên cửa hàng</th><th>Email</th><th>Niche/Sản phẩm</th><th>Giọng văn</th><th>Hành động</th></tr></thead>
+              <tbody id="stores-table-body"><tr><td colspan="5" style="color:var(--muted)">Đang tải...</td></tr></tbody>
+            </table>
           </div>
         </div>
 
-        <!-- Users table -->
-        <div class="panel" style="height:auto;">
-          <div class="panel-head">👥 Danh sách nhân viên</div>
-          <table class="user-table">
-            <thead>
-              <tr>
-                <th>Email</th>
-                <th>Vai trò</th>
-                <th>Email đã xử lý</th>
-                <th>Hành động</th>
-              </tr>
-            </thead>
-            <tbody id="users-table-body">
-              <tr><td colspan="4" style="color:var(--muted);">Đang tải...</td></tr>
-            </tbody>
-          </table>
+        <!-- POLICY TAB -->
+        <div id="admin-tab-policy" class="hidden">
+          <div class="policy-section">
+            <div class="policy-title">📜 Chính sách áp dụng cho tất cả cửa hàng</div>
+            <div class="modal-field">
+              <label>Chính sách Shipping</label>
+              <textarea id="policy-shipping" rows="5" placeholder="VD: Orders are processed within 2-3 business days. Standard shipping takes 7-14 business days. Express shipping available at checkout (3-5 business days)..."></textarea>
+            </div>
+            <div class="modal-field">
+              <label>Chính sách Đổi trả & Hoàn tiền</label>
+              <textarea id="policy-return" rows="5" placeholder="VD: We accept returns within 30 days of delivery for defective or wrong items. Customer must provide photos of the issue. Refunds processed within 5-7 business days..."></textarea>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;">
+              <button class="btn primary" onclick="savePolicy()">💾 Lưu chính sách</button>
+              <span class="save-indicator" id="policy-saved">✓ Đã lưu!</span>
+            </div>
+          </div>
         </div>
 
-        <!-- Recent activity -->
-        <div class="panel" style="height:auto;">
-          <div class="panel-head">📊 Hoạt động gần đây (tất cả nhân viên)</div>
-          <div id="admin-logs"></div>
+        <!-- STAFF TAB -->
+        <div id="admin-tab-staff" class="hidden">
+          <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
+            <button class="btn primary" onclick="openUserModal()">+ Thêm nhân viên</button>
+          </div>
+          <div class="panel" style="height:auto;">
+            <table class="data-table">
+              <thead><tr><th>Email</th><th>Vai trò</th><th>Email đã xử lý</th></tr></thead>
+              <tbody id="staff-table-body"><tr><td colspan="3" style="color:var(--muted)">Đang tải...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- LOGS TAB -->
+        <div id="admin-tab-logs" class="hidden">
+          <div class="panel" style="height:auto;">
+            <div class="panel-head">Hoạt động gần đây — tất cả nhân viên</div>
+            <div id="admin-logs-content"></div>
+          </div>
         </div>
 
       </div>
@@ -453,102 +351,94 @@ const CONFIG = {
   </div>
 </div>
 
-<!-- ADD USER MODAL -->
-<div id="add-user-modal" class="modal-overlay hidden">
+<!-- STORE MODAL -->
+<div id="store-modal" class="modal-overlay hidden">
   <div class="modal">
-    <div class="modal-title">Thêm nhân viên mới</div>
+    <div class="modal-title" id="store-modal-title">Thêm cửa hàng mới</div>
+    <input type="hidden" id="store-modal-id"/>
+    <div class="modal-field"><label>Tên cửa hàng *</label><input id="store-name" placeholder="VD: TRENDIFY"/></div>
+    <div class="modal-field"><label>Email cửa hàng</label><input id="store-email" placeholder="support@trendify.com"/></div>
+    <div class="modal-field"><label>Chữ ký email</label><textarea id="store-signature" rows="4" placeholder="VD: Best regards,&#10;Sarah — TRENDIFY Support Team&#10;support@trendify.com | trendify.com"></textarea></div>
+    <div class="modal-field"><label>Niche / Sản phẩm bán</label><input id="store-niche" placeholder="VD: Custom T-shirts, Hoodies, Mugs with funny quotes"/></div>
     <div class="modal-field">
-      <label>Email</label>
-      <input type="email" id="new-user-email" placeholder="nhanvien@email.com" />
-    </div>
-    <div class="modal-field">
-      <label>Mật khẩu tạm</label>
-      <input type="text" id="new-user-pass" placeholder="Tối thiểu 6 ký tự" />
+      <label>Giọng văn khi trả lời</label>
+      <select id="store-tone">
+        <option value="friendly">Friendly — thân thiện, ấm áp</option>
+        <option value="professional">Professional — chuyên nghiệp, lịch sự</option>
+        <option value="casual">Casual — thoải mái, gần gũi</option>
+      </select>
     </div>
     <div class="modal-actions">
-      <button class="btn" onclick="closeModal()">Huỷ</button>
+      <button class="btn" onclick="closeStoreModal()">Huỷ</button>
+      <button class="btn primary" onclick="saveStore()">Lưu cửa hàng</button>
+    </div>
+    <div class="err-msg hidden" id="store-modal-err"></div>
+  </div>
+</div>
+
+<!-- USER MODAL -->
+<div id="user-modal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-title">Thêm nhân viên mới</div>
+    <div class="modal-field"><label>Email</label><input type="email" id="new-user-email" placeholder="nhanvien@email.com"/></div>
+    <div class="modal-field"><label>Mật khẩu tạm</label><input type="text" id="new-user-pass" placeholder="Tối thiểu 6 ký tự"/></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeUserModal()">Huỷ</button>
       <button class="btn primary" onclick="addUser()">Tạo tài khoản</button>
     </div>
-    <div id="modal-err" class="login-err hidden"></div>
+    <div class="err-msg hidden" id="user-modal-err"></div>
   </div>
 </div>
 
 <script>
-// ── SUPABASE INIT ────────────────────────────────────
-const { createClient } = supabase;
-let sb, currentUser, currentRole, currentDraft = '';
+const {createClient} = supabase;
+let sb, currentUser, currentRole, currentDraft='', stores=[], globalPolicy={}, selectedStore=null;
 
-// ── CATEGORY MAP ─────────────────────────────────────
 const CAT = {
-  tracking:         { label: 'Tracking đơn hàng', cls: 'tag-blue'  },
-  defective:        { label: 'Sản phẩm lỗi/sai',  cls: 'tag-red'   },
-  shipping:         { label: 'Thời gian giao hàng',cls: 'tag-amber' },
-  refund:           { label: 'Refund & Return',    cls: 'tag-teal'  },
-  cancel:           { label: 'Huỷ đơn hàng',       cls: 'tag-gray'  },
-  product_question: { label: 'Hỏi trước mua',      cls: 'tag-green' },
-  other:            { label: 'Khác',               cls: 'tag-gray'  },
+  tracking:{label:'Tracking đơn hàng',cls:'tag-blue'},
+  defective:{label:'Sản phẩm lỗi/sai',cls:'tag-red'},
+  shipping:{label:'Thời gian giao hàng',cls:'tag-amber'},
+  refund:{label:'Refund & Return',cls:'tag-teal'},
+  cancel:{label:'Huỷ đơn hàng',cls:'tag-gray'},
+  product_question:{label:'Hỏi trước mua',cls:'tag-green'},
+  other:{label:'Khác',cls:'tag-gray'},
 };
 
 // ── BOOT ─────────────────────────────────────────────
 window.onload = async () => {
-  if (!CONFIG.SUPABASE_URL || CONFIG.SUPABASE_URL === 'YOUR_SUPABASE_URL') {
-    // Demo mode — không cần Supabase
-    showDemoMode();
-    return;
-  }
   sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
-  const { data: { session } } = await sb.auth.getSession();
-  if (session) {
-    await bootApp(session.user);
-  }
+  const {data:{session}} = await sb.auth.getSession();
+  if (session) await bootApp(session.user);
 };
-
-function showDemoMode() {
-  // Chạy demo không cần auth
-  document.getElementById('login-screen').classList.add('hidden');
-  document.getElementById('app').classList.remove('hidden');
-  currentRole = 'admin';
-  document.getElementById('user-name-display').textContent = 'Demo Admin';
-  document.getElementById('user-role-display').textContent = 'admin';
-  document.getElementById('user-avatar').textContent = 'D';
-  document.getElementById('admin-nav').style.display = 'block';
-  document.getElementById('store-info').value = CONFIG.DEFAULT_STORE_INFO;
-  showPage('email-agent');
-}
 
 async function bootApp(user) {
   currentUser = user;
   currentRole = user.email === CONFIG.ADMIN_EMAIL ? 'admin' : 'staff';
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
-
   const name = user.email.split('@')[0];
   document.getElementById('user-name-display').textContent = name;
   document.getElementById('user-role-display').textContent = currentRole;
   document.getElementById('user-avatar').textContent = name[0].toUpperCase();
-
-  if (currentRole === 'admin') {
-    document.getElementById('admin-nav').style.display = 'block';
-  }
-  document.getElementById('store-info').value = CONFIG.DEFAULT_STORE_INFO;
+  if (currentRole === 'admin') document.getElementById('admin-nav').classList.remove('hidden');
+  await loadStores();
+  await loadGlobalPolicy();
   showPage('email-agent');
 }
 
 // ── AUTH ─────────────────────────────────────────────
 async function doLogin() {
-  if (!sb) { showDemoMode(); return; }
   const email = document.getElementById('login-email').value.trim();
-  const pass  = document.getElementById('login-pass').value;
-  const err   = document.getElementById('login-err');
+  const pass = document.getElementById('login-pass').value;
+  const err = document.getElementById('login-err');
   err.classList.add('hidden');
-
-  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+  const {data, error} = await sb.auth.signInWithPassword({email, password: pass});
   if (error) { err.textContent = 'Email hoặc mật khẩu không đúng.'; err.classList.remove('hidden'); return; }
   await bootApp(data.user);
 }
 
 async function doLogout() {
-  if (sb) await sb.auth.signOut();
+  await sb.auth.signOut();
   location.reload();
 }
 
@@ -560,88 +450,154 @@ function showPage(page) {
     if (nav) nav.classList.toggle('active', p === page);
   });
   if (page === 'history') loadHistory();
-  if (page === 'admin') loadAdmin();
+  if (page === 'admin') loadAdminData();
+}
+
+function switchAdminTab(tab) {
+  ['stores','policy','staff','logs'].forEach(t => {
+    document.getElementById('admin-tab-'+t).classList.toggle('hidden', t !== tab);
+    document.getElementById('tab-'+t).classList.toggle('active', t === tab);
+  });
+  if (tab === 'policy') loadPolicyFields();
+}
+
+// ── STORES ───────────────────────────────────────────
+async function loadStores() {
+  const {data} = await sb.from('stores').select('*').order('name');
+  stores = data || [];
+  renderStoreSelect();
+}
+
+function renderStoreSelect() {
+  const sel = document.getElementById('store-select');
+  sel.innerHTML = '<option value="">-- Chọn cửa hàng --</option>' +
+    stores.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+}
+
+function onStoreChange() {
+  const id = document.getElementById('store-select').value;
+  selectedStore = stores.find(s => s.id === id) || null;
+  const preview = document.getElementById('store-preview');
+  if (selectedStore) {
+    preview.classList.remove('hidden');
+    document.getElementById('preview-logo').textContent = selectedStore.name[0].toUpperCase();
+    document.getElementById('preview-name').textContent = selectedStore.name;
+    document.getElementById('preview-email').textContent = selectedStore.email || '(chưa có email)';
+    document.getElementById('preview-tone').textContent = selectedStore.tone || 'friendly';
+  } else {
+    preview.classList.add('hidden');
+  }
+}
+
+// ── GLOBAL POLICY ─────────────────────────────────────
+async function loadGlobalPolicy() {
+  const {data} = await sb.from('global_policy').select('*').eq('id', 1).single();
+  globalPolicy = data || {};
+}
+
+function loadPolicyFields() {
+  document.getElementById('policy-shipping').value = globalPolicy.shipping_policy || '';
+  document.getElementById('policy-return').value = globalPolicy.return_policy || '';
+}
+
+async function savePolicy() {
+  const shipping = document.getElementById('policy-shipping').value.trim();
+  const ret = document.getElementById('policy-return').value.trim();
+  await sb.from('global_policy').upsert({id:1, shipping_policy:shipping, return_policy:ret, updated_at:new Date().toISOString()});
+  globalPolicy = {shipping_policy:shipping, return_policy:ret};
+  const ind = document.getElementById('policy-saved');
+  ind.style.display = 'inline';
+  setTimeout(() => ind.style.display='none', 2500);
 }
 
 // ── EMAIL AGENT ──────────────────────────────────────
 async function analyzeEmail() {
   const emailText = document.getElementById('customer-email').value.trim();
   if (!emailText) { alert('Vui lòng dán nội dung email khách!'); return; }
+  if (!selectedStore) { alert('Vui lòng chọn cửa hàng trước!'); return; }
 
-  const storeInfo = document.getElementById('store-info').value.trim() || CONFIG.DEFAULT_STORE_INFO;
   const btn = document.getElementById('analyze-btn');
-  const badge = document.getElementById('agent-status-badge');
-
+  const badge = document.getElementById('output-status');
   btn.disabled = true; btn.textContent = '⏳ Đang phân tích...';
   badge.className = 'status-pill active';
   badge.innerHTML = '<div class="dot pulse"></div> Agent đang làm việc...';
-
   document.getElementById('output-placeholder').classList.add('hidden');
   document.getElementById('output-result').classList.remove('hidden');
   document.getElementById('cat-display').innerHTML = '';
   document.getElementById('summary-display').textContent = '';
   document.getElementById('draft-display').textContent = '';
 
-  const system = `You are a professional customer service agent for a Print-on-Demand (POD) e-commerce store on ShopBase platform.
-Analyze customer emails and reply in a warm, professional, solution-focused tone.
-Empathize first, then give a clear solution or next step.
-Store context: ${storeInfo}
+  // Build context từ store + global policy
+  const storeCtx = `
+Store name: ${selectedStore.name}
+Store email: ${selectedStore.email || 'N/A'}
+Products/Niche: ${selectedStore.niche || 'Custom POD products'}
+Reply tone: ${selectedStore.tone || 'friendly'}
+Email signature:
+${selectedStore.signature || `Best regards,\n${selectedStore.name} Support Team`}
+`.trim();
+
+  const policyCtx = `
+SHIPPING POLICY: ${globalPolicy.shipping_policy || 'Standard shipping 7-14 business days.'}
+RETURN & REFUND POLICY: ${globalPolicy.return_policy || 'Returns accepted within 30 days for defective/wrong items.'}
+`.trim();
+
+  const system = `You are a customer service agent for a Print-on-Demand (POD) store on ShopBase.
+
+STORE INFO:
+${storeCtx}
+
+POLICIES (apply to all stores):
+${policyCtx}
+
+INSTRUCTIONS:
+- Analyze the customer email and craft a reply matching the store's tone
+- Always empathize first, then provide a clear solution
+- End every email with the store's exact signature
+- Be concise but complete
 
 Reply ONLY in this exact JSON (no markdown, no extra text):
 {
   "categories": ["tracking"|"defective"|"shipping"|"refund"|"cancel"|"product_question"|"other"],
-  "summary": "Tóm tắt vấn đề bằng tiếng Việt, 1-2 câu",
-  "draft": "Full professional email reply in English"
+  "summary": "Tóm tắt vấn đề bằng tiếng Việt, 1-2 câu ngắn gọn",
+  "draft": "Full email reply in English with signature at the end"
 }`;
 
   try {
-    const res = await fetch('https://solitary-surf-52e3.trinhdxbk56.workers.dev', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-5', max_tokens: 1000,
-        system, messages: [{ role: 'user', content: `Customer email:\n${emailText}` }]
-      })
+    const res = await fetch(CONFIG.WORKER_URL, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1200,system,messages:[{role:'user',content:`Customer email:\n${emailText}`}]})
     });
     const data = await res.json();
-    if (!res.ok || data.error) {
-      const msg = data.error?.message || data.error?.type || JSON.stringify(data);
-      throw new Error('Claude API lỗi: ' + msg);
-    }
-    if (!data.content) throw new Error('Không nhận được phản hồi từ AI. Kiểm tra lại Claude API key trong Worker.');
-    const text = data.content.map(i => i.text || '').join('');
-    const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+    if (!res.ok || data.error) throw new Error(data.error?.message || JSON.stringify(data));
+    if (!data.content) throw new Error('Không nhận được phản hồi. Kiểm tra lại Claude API key.');
 
-    // Render categories
+    const text = data.content.map(i=>i.text||'').join('');
+    const parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
+
     const catRow = document.getElementById('cat-display');
-    (parsed.categories || ['other']).forEach(c => {
-      const info = CAT[c] || CAT.other;
+    (parsed.categories||['other']).forEach(c => {
+      const info = CAT[c]||CAT.other;
       catRow.innerHTML += `<span class="tag ${info.cls}">${info.label}</span>`;
     });
-
-    document.getElementById('summary-display').textContent = parsed.summary || '';
-    currentDraft = parsed.draft || '';
+    document.getElementById('summary-display').textContent = parsed.summary||'';
+    currentDraft = parsed.draft||'';
     document.getElementById('draft-display').textContent = currentDraft;
-
     badge.className = 'status-pill';
     badge.innerHTML = '<div class="dot"></div> Xong — kiểm tra & copy';
 
     // Save to DB
-    if (sb && currentUser) {
-      await sb.from('email_logs').insert({
-        user_id: currentUser.id,
-        user_email: currentUser.email,
-        customer_email: emailText,
-        categories: parsed.categories,
-        summary: parsed.summary,
-        draft: currentDraft,
-      });
-    }
-  } catch (e) {
+    await sb.from('email_logs').insert({
+      user_id:currentUser.id, user_email:currentUser.email,
+      store_id:selectedStore.id, store_name:selectedStore.name,
+      customer_email:emailText, categories:parsed.categories,
+      summary:parsed.summary, draft:currentDraft,
+    });
+
+  } catch(e) {
     badge.className = 'status-pill';
     badge.innerHTML = '<div class="dot" style="color:var(--danger)"></div> Lỗi!';
-    document.getElementById('output-placeholder').classList.add('hidden');
-    document.getElementById('output-result').classList.remove('hidden');
     document.getElementById('summary-display').textContent = '⚠️ ' + e.message;
     console.error(e);
   }
@@ -655,51 +611,43 @@ function copyDraft() {
   navigator.clipboard.writeText(currentDraft).then(() => {
     const btn = document.querySelector('.copy-btn');
     btn.textContent = '✓ Đã copy!';
-    setTimeout(() => btn.textContent = '⎘ Copy draft', 2000);
+    setTimeout(()=>btn.textContent='⎘ Copy draft',2000);
   });
 }
 
 // ── HISTORY ──────────────────────────────────────────
 async function loadHistory() {
   const container = document.getElementById('history-list');
-  if (!sb || !currentUser) {
-    container.innerHTML = '<div style="color:var(--muted);font-size:13px;">Lịch sử chỉ khả dụng khi kết nối Supabase.</div>';
-    return;
-  }
-  const { data, error } = await sb.from('email_logs')
-    .select('*')
-    .eq('user_id', currentUser.id)
-    .order('created_at', { ascending: false })
-    .limit(30);
-
-  if (error || !data?.length) {
-    container.innerHTML = '<div style="color:var(--muted);font-size:13px;">Chưa có lịch sử nào.</div>';
-    return;
-  }
-
-  container.innerHTML = data.map(r => `
-    <div class="history-card" onclick="loadHistoryItem(${JSON.stringify(r).replace(/"/g,'&quot;')})">
+  const {data,error} = await sb.from('email_logs').select('*')
+    .eq('user_id',currentUser.id).order('created_at',{ascending:false}).limit(30);
+  if (error||!data?.length) { container.innerHTML='<div style="color:var(--muted);font-size:13px;">Chưa có lịch sử nào.</div>'; return; }
+  container.innerHTML = data.map(r=>`
+    <div class="history-card" onclick="restoreHistory(${JSON.stringify(r).replace(/"/g,'&quot;')})">
       <div class="history-meta">
         <div class="cat-row">${(r.categories||['other']).map(c=>`<span class="tag ${(CAT[c]||CAT.other).cls}">${(CAT[c]||CAT.other).label}</span>`).join('')}</div>
-        <div class="history-time">${new Date(r.created_at).toLocaleString('vi-VN')}</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          ${r.store_name?`<span class="history-store">🏪 ${r.store_name}</span>`:''}
+          <span class="history-time">${new Date(r.created_at).toLocaleString('vi-VN')}</span>
+        </div>
       </div>
-      <div class="history-summary">${r.summary || ''}</div>
-      <div class="history-draft">${r.draft || ''}</div>
-    </div>
-  `).join('');
+      <div class="history-summary">${r.summary||''}</div>
+      <div class="history-draft">${r.draft||''}</div>
+    </div>`).join('');
 }
 
-function loadHistoryItem(r) {
-  document.getElementById('customer-email').value = r.customer_email || '';
+function restoreHistory(r) {
+  document.getElementById('customer-email').value = r.customer_email||'';
+  if (r.store_id) {
+    document.getElementById('store-select').value = r.store_id;
+    onStoreChange();
+  }
   showPage('email-agent');
-  // Restore result
   document.getElementById('output-placeholder').classList.add('hidden');
   document.getElementById('output-result').classList.remove('hidden');
-  const catRow = document.getElementById('cat-display');
-  catRow.innerHTML = '';
-  (r.categories||['other']).forEach(c => {
-    const info = CAT[c]||CAT.other;
-    catRow.innerHTML += `<span class="tag ${info.cls}">${info.label}</span>`;
+  document.getElementById('cat-display').innerHTML = '';
+  (r.categories||['other']).forEach(c=>{
+    const info=CAT[c]||CAT.other;
+    document.getElementById('cat-display').innerHTML+=`<span class="tag ${info.cls}">${info.label}</span>`;
   });
   document.getElementById('summary-display').textContent = r.summary||'';
   currentDraft = r.draft||'';
@@ -707,97 +655,106 @@ function loadHistoryItem(r) {
 }
 
 // ── ADMIN ─────────────────────────────────────────────
-async function loadAdmin() {
-  if (!sb) {
-    document.getElementById('stat-users').textContent = 'N/A';
-    document.getElementById('stat-emails').textContent = 'N/A';
-    document.getElementById('users-table-body').innerHTML = '<tr><td colspan="4" style="color:var(--muted);">Kết nối Supabase để xem.</td></tr>';
-    document.getElementById('admin-logs').innerHTML = '<div style="color:var(--muted);font-size:13px;">Cần kết nối Supabase.</div>';
-    return;
-  }
+async function loadAdminData() {
+  // Stores table
+  const storesTbody = document.getElementById('stores-table-body');
+  storesTbody.innerHTML = stores.length ? stores.map(s=>`
+    <tr>
+      <td><strong>${s.name}</strong></td>
+      <td style="font-size:12px;color:var(--muted)">${s.email||'—'}</td>
+      <td style="font-size:12px;color:var(--muted)">${s.niche||'—'}</td>
+      <td><span class="tag tag-green">${s.tone||'friendly'}</span></td>
+      <td style="display:flex;gap:6px;">
+        <button class="btn sm" onclick="openStoreModal('${s.id}')">✏️ Sửa</button>
+        <button class="btn sm danger" onclick="deleteStore('${s.id}','${s.name}')">🗑</button>
+      </td>
+    </tr>`).join('')
+  : '<tr><td colspan="5" style="color:var(--muted)">Chưa có cửa hàng nào. Thêm cửa hàng đầu tiên!</td></tr>';
 
-  // Lấy all email logs (admin thấy tất cả)
+  // Staff + logs
+  const {data:logs} = await sb.from('email_logs').select('*').order('created_at',{ascending:false}).limit(50);
   const today = new Date(); today.setHours(0,0,0,0);
-  const { data: logs } = await sb.from('email_logs').select('*').order('created_at', { ascending: false }).limit(50);
-  const todayLogs = (logs||[]).filter(l => new Date(l.created_at) >= today);
-  const uniqueUsers = [...new Set((logs||[]).map(l => l.user_email))];
-
-  document.getElementById('stat-users').textContent = uniqueUsers.length;
-  document.getElementById('stat-emails').textContent = todayLogs.length;
-
-  // Users table
+  const todayLogs = (logs||[]).filter(l=>new Date(l.created_at)>=today);
+  const uniqueUsers = [...new Set((logs||[]).map(l=>l.user_email))];
   const counts = {};
-  (logs||[]).forEach(l => { counts[l.user_email] = (counts[l.user_email]||0)+1; });
-  document.getElementById('users-table-body').innerHTML = uniqueUsers.map(email => `
+  (logs||[]).forEach(l=>{counts[l.user_email]=(counts[l.user_email]||0)+1;});
+
+  document.getElementById('staff-table-body').innerHTML = uniqueUsers.map(email=>`
     <tr>
       <td>${email}</td>
       <td><span class="tag ${email===CONFIG.ADMIN_EMAIL?'tag-amber':'tag-blue'}">${email===CONFIG.ADMIN_EMAIL?'admin':'staff'}</span></td>
       <td style="font-family:var(--mono)">${counts[email]||0}</td>
-      <td><button class="btn" style="font-size:11px;padding:4px 10px;" onclick="viewUserLogs('${email}')">Xem logs</button></td>
-    </tr>
-  `).join('') || '<tr><td colspan="4" style="color:var(--muted);">Chưa có nhân viên nào dùng tool.</td></tr>';
+    </tr>`).join('') || '<tr><td colspan="3" style="color:var(--muted)">Chưa có hoạt động.</td></tr>';
 
-  // Recent logs
-  document.getElementById('admin-logs').innerHTML = (logs||[]).slice(0,10).map(l => `
-    <div class="admin-log-item">
+  document.getElementById('admin-logs-content').innerHTML = (logs||[]).slice(0,15).map(l=>`
+    <div class="log-item">
       <div class="log-badge">EMAIL</div>
       <div class="log-content">
-        <div class="log-user">${l.user_email}</div>
-        <div style="font-size:12px;margin-top:2px;">${l.summary||''}</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span style="font-weight:500">${l.user_email}</span>
+          ${l.store_name?`<span class="tag tag-teal" style="font-size:10px">🏪 ${l.store_name}</span>`:''}
+        </div>
+        <div style="margin-top:2px">${l.summary||''}</div>
         <div class="log-time">${new Date(l.created_at).toLocaleString('vi-VN')}</div>
       </div>
-    </div>
-  `).join('') || '<div style="color:var(--muted);font-size:13px;">Chưa có hoạt động.</div>';
+    </div>`).join('') || '<div style="color:var(--muted);font-size:13px">Chưa có hoạt động.</div>';
 }
 
-function viewUserLogs(email) {
-  alert(`Xem logs của ${email} — tính năng đang phát triển.\n\nBạn có thể xem trực tiếp trong Supabase → Table Editor → email_logs`);
+// ── STORE MODAL ───────────────────────────────────────
+function openStoreModal(id) {
+  document.getElementById('store-modal-err').classList.add('hidden');
+  const store = id ? stores.find(s=>s.id===id) : null;
+  document.getElementById('store-modal-title').textContent = store ? 'Sửa cửa hàng' : 'Thêm cửa hàng mới';
+  document.getElementById('store-modal-id').value = store?.id||'';
+  document.getElementById('store-name').value = store?.name||'';
+  document.getElementById('store-email').value = store?.email||'';
+  document.getElementById('store-signature').value = store?.signature||'';
+  document.getElementById('store-niche').value = store?.niche||'';
+  document.getElementById('store-tone').value = store?.tone||'friendly';
+  document.getElementById('store-modal').classList.remove('hidden');
 }
 
-// ── USER MANAGEMENT ──────────────────────────────────
-function showAddUserModal() { document.getElementById('add-user-modal').classList.remove('hidden'); }
-function closeModal() {
-  document.getElementById('add-user-modal').classList.add('hidden');
-  document.getElementById('modal-err').classList.add('hidden');
+function closeStoreModal() { document.getElementById('store-modal').classList.add('hidden'); }
+
+async function saveStore() {
+  const name = document.getElementById('store-name').value.trim();
+  if (!name) { document.getElementById('store-modal-err').textContent='Tên cửa hàng không được trống.'; document.getElementById('store-modal-err').classList.remove('hidden'); return; }
+  const id = document.getElementById('store-modal-id').value;
+  const payload = {
+    name, email:document.getElementById('store-email').value.trim(),
+    signature:document.getElementById('store-signature').value.trim(),
+    niche:document.getElementById('store-niche').value.trim(),
+    tone:document.getElementById('store-tone').value,
+  };
+  if (id) { await sb.from('stores').update(payload).eq('id',id); }
+  else { await sb.from('stores').insert(payload); }
+  closeStoreModal();
+  await loadStores();
+  loadAdminData();
 }
+
+async function deleteStore(id, name) {
+  if (!confirm(`Xoá cửa hàng "${name}"?`)) return;
+  await sb.from('stores').delete().eq('id',id);
+  await loadStores();
+  loadAdminData();
+}
+
+// ── USER MODAL ────────────────────────────────────────
+function openUserModal() { document.getElementById('user-modal').classList.remove('hidden'); }
+function closeUserModal() { document.getElementById('user-modal').classList.add('hidden'); }
 
 async function addUser() {
-  if (!sb) { alert('Cần kết nối Supabase để tạo tài khoản.'); return; }
   const email = document.getElementById('new-user-email').value.trim();
-  const pass  = document.getElementById('new-user-pass').value;
-  const err   = document.getElementById('modal-err');
+  const pass = document.getElementById('new-user-pass').value;
+  const err = document.getElementById('user-modal-err');
   err.classList.add('hidden');
-
-  if (!email || pass.length < 6) {
-    err.textContent = 'Email và mật khẩu tối thiểu 6 ký tự.';
-    err.classList.remove('hidden'); return;
-  }
-
-  // Dùng Supabase Admin API để tạo user (cần service role key nếu muốn tạo từ client)
-  // Cách đơn giản nhất: nhân viên tự đăng ký, admin invite qua email
-  const { error } = await sb.auth.signUp({ email, password: pass });
-  if (error) { err.textContent = error.message; err.classList.remove('hidden'); return; }
-
-  closeModal();
+  if (!email||pass.length<6) { err.textContent='Email và mật khẩu tối thiểu 6 ký tự.'; err.classList.remove('hidden'); return; }
+  const {error} = await sb.auth.signUp({email,password:pass});
+  if (error) { err.textContent=error.message; err.classList.remove('hidden'); return; }
+  closeUserModal();
   alert(`✓ Đã tạo tài khoản cho ${email}!\nNhân viên có thể đăng nhập ngay.`);
-  loadAdmin();
 }
 </script>
-
-<!-- HƯỚNG DẪN SETUP (xoá sau khi deploy) -->
-<div id="setup-guide" style="position:fixed;bottom:16px;right:16px;background:#18181b;border:1px solid #6c63ff44;border-radius:12px;padding:16px;max-width:300px;font-size:12px;z-index:200;">
-  <div style="font-weight:600;color:#6c63ff;margin-bottom:8px;">📋 Hướng dẫn setup</div>
-  <div style="color:#7c7c8e;line-height:1.7;">
-    1. Tạo tài khoản <a href="https://supabase.com" target="_blank" style="color:#6c63ff;">Supabase</a> miễn phí<br>
-    2. Tạo bảng <code style="background:#222;padding:1px 4px;border-radius:3px;">email_logs</code> (xem README)<br>
-    3. Điền keys vào CONFIG ở đầu file<br>
-    4. Upload lên <a href="https://vercel.com" target="_blank" style="color:#6c63ff;">Vercel</a> miễn phí
-  </div>
-  <div style="margin-top:10px;padding-top:10px;border-top:1px solid #2e2e36;color:#7c7c8e;">
-    Hiện đang chạy <strong style="color:#4ade80;">Demo Mode</strong> (không cần auth)
-  </div>
-  <div style="margin-top:6px;cursor:pointer;color:#7c7c8e;font-size:11px;" onclick="this.parentElement.remove()">✕ Đóng hướng dẫn</div>
-</div>
-
 </body>
 </html>
