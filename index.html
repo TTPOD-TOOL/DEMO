@@ -24,13 +24,6 @@
     --font:      'DM Sans', sans-serif;
     --mono:      'DM Mono', monospace;
   }
-const CONFIG = {
-  SUPABASE_URL: 'https://agormhbqxwkbojjxssay.supabase.co',
-  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFnb3JtaGJxeHdrYm9qanhzc2F5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwODE3MjUsImV4cCI6MjA5NTY1NzcyNX0.IkFtUMCnpYvHFuPEIEUS7Dy0ELFnA6V4ail76ZpDu7U',
-  CLAUDE_API_KEY: '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',
-  ADMIN_EMAIL: 'trinhdxbk56@yahoo.com',
-  DEFAULT_STORE_INFO: 'Tên store: TRENDIFY. Bán áo thun & hoodie POD. Shipping 7-14 ngày...',
-};
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; line-height: 1.6; }
 
@@ -258,20 +251,13 @@ const CONFIG = {
 </head>
 <body>
 
-<!-- ══ CONFIG (ĐIỀN VÀO ĐÂY) ══════════════════════════════════════════ -->
+<!-- ══ CONFIG ══════════════════════════════════════════════════════════ -->
 <script>
 const CONFIG = {
-  // 1. Lấy từ https://supabase.com → Project Settings → API
-  SUPABASE_URL: 'YOUR_SUPABASE_URL',
-  SUPABASE_ANON_KEY: 'YOUR_SUPABASE_ANON_KEY',
-
-  // 2. Lấy từ https://console.anthropic.com → API Keys
-  CLAUDE_API_KEY: 'YOUR_CLAUDE_API_KEY',
-
-  // 3. Email tài khoản admin (tài khoản của bạn)
-  ADMIN_EMAIL: 'admin@yourstore.com',
-
-  // 4. Thông tin store mặc định (nhân viên có thể tự sửa)
+  SUPABASE_URL: 'https://agormhbqxwkbojjxssay.supabase.co',
+  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFnb3JtaGJxeHdrYm9qanhzc2F5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwODE3MjUsImV4cCI6MjA5NTY1NzcyNX0.IkFtUMCnpYvHFuPEIEUS7Dy0ELFnA6V4ail76ZpDu7U',
+  CLAUDE_API_KEY: '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',
+  ADMIN_EMAIL: 'trinhdxbk56@yahoo.com',
   DEFAULT_STORE_INFO: 'POD store selling custom print-on-demand products. Shipping: 7-14 business days. Refund policy: 30 days for defective/wrong items. Platform: ShopBase.',
 };
 </script>
@@ -505,7 +491,7 @@ const CAT = {
 
 // ── BOOT ─────────────────────────────────────────────
 window.onload = async () => {
-  if (CONFIG.SUPABASE_URL === 'YOUR_SUPABASE_URL') {
+  if (!CONFIG.SUPABASE_URL || CONFIG.SUPABASE_URL === 'YOUR_SUPABASE_URL') {
     // Demo mode — không cần Supabase
     showDemoMode();
     return;
