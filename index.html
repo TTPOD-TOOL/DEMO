@@ -205,27 +205,33 @@ const CONFIG = {
   <div class="main">
 
     <!-- EMAIL AGENT PAGE -->
+
+    <!-- EMAIL AGENT PAGE -->
     <div id="page-email-agent">
       <div class="topbar">
-        <div><div class="topbar-title">✉ Email Agent</div><div class="topbar-sub">Chọn cửa hàng → dán email → nhận draft phản hồi</div></div>
-        <div id="agent-status-badge" class="status-pill"><div class="dot"></div> Sẵn sàng</div>
+        <div>
+          <div class="topbar-title">✉ Email Agent</div>
+          <div class="topbar-sub">Chọn store → dán chuỗi email → agent phân tích & soạn phản hồi</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div id="step-indicator" class="status-pill">Bước 1 — Chờ email</div>
+          <div id="agent-status-badge" class="status-pill"><div class="dot"></div> Sẵn sàng</div>
+        </div>
       </div>
-      <div class="content">
+      <div class="content" style="display:flex;flex-direction:column;gap:14px;">
+
+        <!-- ROW 1: INPUT + ANALYSIS -->
         <div class="agent-grid">
 
-          <!-- LEFT -->
+          <!-- LEFT: INPUT -->
           <div class="panel">
-            <div class="panel-head">📥 Thông tin & Email khách</div>
-
-            <!-- Store selector -->
+            <div class="panel-head">📥 Chuỗi email khách hàng</div>
             <div>
               <label>Cửa hàng</label>
               <select id="store-select" onchange="onStoreChange()">
                 <option value="">-- Đang tải cửa hàng... --</option>
               </select>
             </div>
-
-            <!-- Store preview -->
             <div id="store-preview" class="store-selector-bar hidden">
               <div class="store-logo" id="preview-logo">?</div>
               <div class="store-info-text">
@@ -234,42 +240,85 @@ const CONFIG = {
               </div>
               <span class="tag tag-green" id="preview-tone">friendly</span>
             </div>
-
-            <!-- Customer email -->
             <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
-              <label>Nội dung email khách hàng</label>
-              <textarea class="email-input" id="customer-email" placeholder="Dán email khách vào đây...&#10;&#10;VD: Hi, I placed an order 2 weeks ago and still haven't received it. Order #1234. Can you help?"></textarea>
+              <label>Toàn bộ chuỗi email (copy từ đầu đến cuối)</label>
+              <textarea class="email-input" id="customer-email" placeholder="Dán toàn bộ chuỗi email vào đây, bao gồm cả các email cũ...&#10;&#10;VD:&#10;--- Email 1 (3 ngày trước) ---&#10;Customer: Hi, I ordered #1234 but haven't received it...&#10;&#10;--- Email 2 (2 ngày trước) ---&#10;Store: Hi! We are checking on your order...&#10;&#10;--- Email 3 (hôm nay) ---&#10;Customer: Still no update, I want a refund!"></textarea>
             </div>
-
-            <button class="analyze-btn" id="analyze-btn" onclick="analyzeEmail()">✦ Phân tích & Soạn phản hồi</button>
+            <button class="analyze-btn" id="analyze-btn" onclick="startAnalysis()">✦ Phân tích chuỗi email</button>
           </div>
 
-          <!-- RIGHT -->
+          <!-- RIGHT: ANALYSIS OUTPUT -->
           <div class="panel">
             <div class="panel-head" style="justify-content:space-between;">
-              <span>🤖 Phản hồi của Agent</span>
+              <span>🤖 Phân tích của Agent</span>
               <span id="output-status" class="status-pill"><div class="dot"></div> Chờ email...</span>
             </div>
 
             <div id="output-placeholder" style="flex:1;display:flex;align-items:center;justify-content:center;">
               <div class="draft-placeholder">
                 <div style="font-size:32px;margin-bottom:10px;">📭</div>
-                Chọn cửa hàng & dán email<br>rồi nhấn phân tích
+                Chọn store & dán chuỗi email<br>rồi nhấn phân tích
               </div>
             </div>
 
-            <div id="output-result" class="hidden" style="flex:1;display:flex;flex-direction:column;gap:10px;">
-              <div><label>Phân loại vấn đề</label><div class="cat-row" id="cat-display"></div></div>
-              <div><label>Tóm tắt (Tiếng Việt)</label><div class="summary-box" id="summary-display"></div></div>
-              <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
-                <label>Draft email phản hồi (Tiếng Anh)</label>
-                <div class="draft-box" id="draft-display"></div>
+            <div id="output-analysis" class="hidden" style="flex:1;display:flex;flex-direction:column;gap:10px;overflow-y:auto;">
+              <div>
+                <label>Phân loại vấn đề</label>
+                <div class="cat-row" id="cat-display"></div>
               </div>
-              <button class="copy-btn" onclick="copyDraft()">⎘ Copy draft</button>
+              <div>
+                <label>Tóm tắt lịch sử trao đổi</label>
+                <div class="summary-box" id="history-summary"></div>
+              </div>
+              <div>
+                <label>Yêu cầu mới nhất của khách</label>
+                <div class="summary-box" style="border-left:3px solid var(--accent);" id="latest-request"></div>
+              </div>
+              <div>
+                <label>Đề xuất hướng xử lý</label>
+                <div class="summary-box" style="border-left:3px solid var(--accent2);" id="direction-display"></div>
+              </div>
+
+              <div style="border-top:1px solid var(--border);padding-top:10px;">
+                <label style="margin-bottom:6px;">Góp ý cho agent (nếu muốn chỉnh hướng xử lý)</label>
+                <textarea id="feedback-input" rows="2" style="resize:none;font-size:12px;" placeholder="VD: đề nghị resend thay vì refund, thêm lời xin lỗi chân thành hơn, thêm voucher 10%..."></textarea>
+                <div style="display:flex;gap:8px;margin-top:8px;">
+                  <button class="btn" style="flex:1;font-size:12px;" id="feedback-btn" onclick="submitFeedback()">✎ Gửi góp ý → agent chỉnh lại</button>
+                  <button class="analyze-btn" style="flex:1;padding:8px;" id="approve-btn" onclick="writeDraft()">✓ Đồng ý — Viết email</button>
+                </div>
+              </div>
             </div>
           </div>
 
         </div>
+
+        <!-- ROW 2: DRAFT OUTPUT (hiện sau khi approve) -->
+        <div id="draft-section" class="panel hidden" style="height:auto;">
+          <div class="panel-head" style="justify-content:space-between;">
+            <span>📝 Draft email — xác nhận trước khi gửi</span>
+            <span id="lang-badge" class="status-pill"><div class="dot" style="color:var(--accent2)"></div> Đang soạn...</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <label style="display:flex;align-items:center;gap:6px;">
+                ✉ Email gốc <span style="font-size:11px;color:var(--muted);">(ngôn ngữ khách — để copy gửi)</span>
+              </label>
+              <div class="draft-box" id="draft-original" style="min-height:180px;"></div>
+              <button class="copy-btn" onclick="copyDraft()" id="copy-btn">⎘ Copy email gốc</button>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <label style="display:flex;align-items:center;gap:6px;">
+                🇻🇳 Bản dịch tiếng Việt <span style="font-size:11px;color:var(--muted);">(để xác nhận nội dung)</span>
+              </label>
+              <div class="draft-box" id="draft-vietnamese" style="min-height:180px;color:var(--muted);"></div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:4px;">
+            <button class="btn" style="font-size:12px;" onclick="resetAgent()">↺ Xử lý email mới</button>
+            <button class="btn" style="font-size:12px;" onclick="redraftWithNote()">✎ Yêu cầu viết lại</button>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -510,109 +559,235 @@ async function savePolicy() {
   setTimeout(() => ind.style.display='none', 2500);
 }
 
-// ── EMAIL AGENT ──────────────────────────────────────
-async function analyzeEmail() {
-  const emailText = document.getElementById('customer-email').value.trim();
-  if (!emailText) { alert('Vui lòng dán nội dung email khách!'); return; }
-  if (!selectedStore) { alert('Vui lòng chọn cửa hàng trước!'); return; }
+// ── EMAIL AGENT (v4) ─────────────────────────────────
+let agentState = { analysis: null, detectedLang: 'English' };
 
-  const btn = document.getElementById('analyze-btn');
-  const badge = document.getElementById('output-status');
-  btn.disabled = true; btn.textContent = '⏳ Đang phân tích...';
-  badge.className = 'status-pill active';
-  badge.innerHTML = '<div class="dot pulse"></div> Agent đang làm việc...';
-  document.getElementById('output-placeholder').classList.add('hidden');
-  document.getElementById('output-result').classList.remove('hidden');
-  document.getElementById('cat-display').innerHTML = '';
-  document.getElementById('summary-display').textContent = '';
-  document.getElementById('draft-display').textContent = '';
-
-  // Build context từ store + global policy
-  const storeCtx = `
-Store name: ${selectedStore.name}
+function buildStoreContext() {
+  const storeCtx = `Store name: ${selectedStore.name}
 Store email: ${selectedStore.email || 'N/A'}
 Products/Niche: ${selectedStore.niche || 'Custom POD products'}
 Reply tone: ${selectedStore.tone || 'friendly'}
 Email signature:
-${selectedStore.signature || `Best regards,\n${selectedStore.name} Support Team`}
-`.trim();
+${selectedStore.signature || `Best regards,\n${selectedStore.name} Support Team`}`.trim();
+  const policyCtx = `SHIPPING POLICY: ${globalPolicy.shipping_policy || 'Standard shipping 7-14 business days.'}
+RETURN & REFUND POLICY: ${globalPolicy.return_policy || 'Returns accepted within 30 days for defective/wrong items.'}`.trim();
+  return { storeCtx, policyCtx };
+}
 
-  const policyCtx = `
-SHIPPING POLICY: ${globalPolicy.shipping_policy || 'Standard shipping 7-14 business days.'}
-RETURN & REFUND POLICY: ${globalPolicy.return_policy || 'Returns accepted within 30 days for defective/wrong items.'}
-`.trim();
+async function callClaude(system, userMsg) {
+  const res = await fetch(CONFIG.WORKER_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: 'claude-sonnet-4-5', max_tokens: 1500, system, messages: [{ role: 'user', content: userMsg }] })
+  });
+  const data = await res.json();
+  if (!res.ok || data.error) throw new Error(data.error?.message || JSON.stringify(data));
+  if (!data.content) throw new Error('Không nhận được phản hồi. Kiểm tra Claude API key.');
+  return data.content.map(i => i.text || '').join('');
+}
 
-  const system = `You are a customer service agent for a Print-on-Demand (POD) store on ShopBase.
+function setStatus(text, active = false) {
+  const badge = document.getElementById('output-status');
+  badge.className = 'status-pill' + (active ? ' active' : '');
+  badge.innerHTML = `<div class="dot${active ? ' pulse' : ''}"></div> ${text}`;
+}
 
-STORE INFO:
-${storeCtx}
+function setStep(text) {
+  document.getElementById('step-indicator').textContent = text;
+}
 
-POLICIES (apply to all stores):
-${policyCtx}
+async function startAnalysis() {
+  const emailText = document.getElementById('customer-email').value.trim();
+  if (!emailText) { alert('Vui lòng dán chuỗi email khách!'); return; }
+  if (!selectedStore) { alert('Vui lòng chọn cửa hàng trước!'); return; }
 
-INSTRUCTIONS:
-- Analyze the customer email and craft a reply matching the store's tone
-- Always empathize first, then provide a clear solution
-- End every email with the store's exact signature
-- Be concise but complete
+  const btn = document.getElementById('analyze-btn');
+  btn.disabled = true; btn.textContent = '⏳ Đang phân tích...';
+  setStatus('Agent đang phân tích...', true);
+  setStep('Bước 2 — Đang phân tích');
 
-Reply ONLY in this exact JSON (no markdown, no extra text):
+  document.getElementById('output-placeholder').classList.add('hidden');
+  document.getElementById('output-analysis').classList.remove('hidden');
+  document.getElementById('draft-section').classList.add('hidden');
+  document.getElementById('cat-display').innerHTML = '';
+  document.getElementById('history-summary').textContent = '';
+  document.getElementById('latest-request').textContent = '';
+  document.getElementById('direction-display').textContent = '';
+
+  const { storeCtx, policyCtx } = buildStoreContext();
+
+  const system = `You are a senior customer service manager for a POD store on ShopBase.
+Analyze the full email thread provided and respond ONLY in this exact JSON (no markdown, no extra text):
 {
   "categories": ["tracking"|"defective"|"shipping"|"refund"|"cancel"|"product_question"|"other"],
-  "summary": "Tóm tắt vấn đề bằng tiếng Việt, 1-2 câu ngắn gọn",
-  "draft": "Full email reply in English with signature at the end"
-}`;
+  "detected_language": "the language the customer is writing in, e.g. English, French, German...",
+  "history_summary": "Tóm tắt lịch sử trao đổi bằng tiếng Việt, ngắn gọn 2-3 câu",
+  "latest_request": "Nội dung/yêu cầu mới nhất của khách bằng tiếng Việt, 1-2 câu",
+  "direction": "Đề xuất hướng xử lý cụ thể bằng tiếng Việt. Rõ ràng, actionable"
+}
+
+STORE INFO: ${storeCtx}
+POLICIES: ${policyCtx}`;
 
   try {
-    const res = await fetch(CONFIG.WORKER_URL, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1200,system,messages:[{role:'user',content:`Customer email:\n${emailText}`}]})
-    });
-    const data = await res.json();
-    if (!res.ok || data.error) throw new Error(data.error?.message || JSON.stringify(data));
-    if (!data.content) throw new Error('Không nhận được phản hồi. Kiểm tra lại Claude API key.');
+    const text = await callClaude(system, `Full email thread:\n${emailText}`);
+    const parsed = JSON.parse(text.replace(/\`\`\`json|\`\`\`/g, '').trim());
 
-    const text = data.content.map(i=>i.text||'').join('');
-    const parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
+    agentState.analysis = parsed;
+    agentState.emailText = emailText;
+    agentState.detectedLang = parsed.detected_language || 'English';
 
     const catRow = document.getElementById('cat-display');
-    (parsed.categories||['other']).forEach(c => {
-      const info = CAT[c]||CAT.other;
+    (parsed.categories || ['other']).forEach(c => {
+      const info = CAT[c] || CAT.other;
       catRow.innerHTML += `<span class="tag ${info.cls}">${info.label}</span>`;
     });
-    document.getElementById('summary-display').textContent = parsed.summary||'';
-    currentDraft = parsed.draft||'';
-    document.getElementById('draft-display').textContent = currentDraft;
-    badge.className = 'status-pill';
-    badge.innerHTML = '<div class="dot"></div> Xong — kiểm tra & copy';
+    catRow.innerHTML += `<span class="tag tag-blue" style="margin-left:6px;">🌐 ${parsed.detected_language}</span>`;
 
-    // Save to DB
-    await sb.from('email_logs').insert({
-      user_id:currentUser.id, user_email:currentUser.email,
-      store_id:selectedStore.id, store_name:selectedStore.name,
-      customer_email:emailText, categories:parsed.categories,
-      summary:parsed.summary, draft:currentDraft,
-    });
+    document.getElementById('history-summary').textContent = parsed.history_summary || '';
+    document.getElementById('latest-request').textContent = parsed.latest_request || '';
+    document.getElementById('direction-display').textContent = parsed.direction || '';
+    document.getElementById('feedback-input').value = '';
+
+    setStatus('Bước 3 — Kiểm tra hướng xử lý');
+    setStep('Bước 3 — Duyệt hướng xử lý');
 
   } catch(e) {
-    badge.className = 'status-pill';
-    badge.innerHTML = '<div class="dot" style="color:var(--danger)"></div> Lỗi!';
-    document.getElementById('summary-display').textContent = '⚠️ ' + e.message;
+    setStatus('Lỗi!');
+    document.getElementById('history-summary').textContent = '⚠️ ' + e.message;
     console.error(e);
   }
 
   btn.disabled = false;
-  btn.textContent = '✦ Phân tích & Soạn phản hồi';
+  btn.textContent = '✦ Phân tích chuỗi email';
+}
+
+async function submitFeedback() {
+  const feedback = document.getElementById('feedback-input').value.trim();
+  if (!feedback) { alert('Vui lòng nhập góp ý trước!'); return; }
+  if (!agentState.analysis) { alert('Hãy phân tích email trước!'); return; }
+
+  const fbBtn = document.getElementById('feedback-btn');
+  fbBtn.disabled = true; fbBtn.textContent = '⏳ Agent đang điều chỉnh...';
+  setStatus('Đang điều chỉnh hướng xử lý...', true);
+
+  const { storeCtx, policyCtx } = buildStoreContext();
+  const system = `You are a senior customer service manager for a POD store on ShopBase.
+The staff has reviewed your suggested direction and provided feedback. Update the direction accordingly.
+Respond ONLY in this exact JSON:
+{
+  "direction": "Hướng xử lý đã được cập nhật theo góp ý, bằng tiếng Việt"
+}
+STORE INFO: ${storeCtx}
+POLICIES: ${policyCtx}`;
+
+  const userMsg = `Original email thread: ${agentState.emailText}
+Previous direction: ${agentState.analysis.direction}
+Staff feedback: ${feedback}`;
+
+  try {
+    const text = await callClaude(system, userMsg);
+    const parsed = JSON.parse(text.replace(/\`\`\`json|\`\`\`/g, '').trim());
+    agentState.analysis.direction = parsed.direction;
+    document.getElementById('direction-display').textContent = parsed.direction;
+    document.getElementById('feedback-input').value = '';
+    setStatus('Đã cập nhật — kiểm tra lại');
+  } catch(e) {
+    setStatus('Lỗi khi điều chỉnh');
+    console.error(e);
+  }
+
+  fbBtn.disabled = false; fbBtn.textContent = '✎ Gửi góp ý → agent chỉnh lại';
+}
+
+async function writeDraft() {
+  if (!agentState.analysis) { alert('Hãy phân tích email trước!'); return; }
+
+  const approveBtn = document.getElementById('approve-btn');
+  approveBtn.disabled = true; approveBtn.textContent = '⏳ Đang viết email...';
+  setStatus('Đang viết email + dịch...', true);
+  setStep('Bước 5 — Đang soạn email');
+
+  document.getElementById('draft-section').classList.remove('hidden');
+  document.getElementById('draft-original').textContent = '';
+  document.getElementById('draft-vietnamese').textContent = '';
+  document.getElementById('lang-badge').innerHTML = '<div class="dot pulse" style="color:var(--accent2)"></div> Đang soạn...';
+
+  const { storeCtx, policyCtx } = buildStoreContext();
+  const system = `You are a professional customer service agent for a POD store on ShopBase.
+Write a reply email in ${agentState.detectedLang} following the approved handling direction.
+Then translate the full email to Vietnamese.
+Respond ONLY in this exact JSON (no markdown, no extra text):
+{
+  "email_original": "Full reply email in ${agentState.detectedLang} with store signature at the end",
+  "email_vietnamese": "Full Vietnamese translation of the email above"
+}
+STORE INFO: ${storeCtx}
+POLICIES: ${policyCtx}`;
+
+  const userMsg = `Email thread: ${agentState.emailText}
+Approved handling direction: ${agentState.analysis.direction}
+Write the reply email following this direction exactly.`;
+
+  try {
+    const text = await callClaude(system, userMsg);
+    const parsed = JSON.parse(text.replace(/\`\`\`json|\`\`\`/g, '').trim());
+
+    currentDraft = parsed.email_original || '';
+    document.getElementById('draft-original').textContent = currentDraft;
+    document.getElementById('draft-vietnamese').textContent = parsed.email_vietnamese || '';
+    document.getElementById('lang-badge').innerHTML = `<div class="dot" style="color:var(--accent2)"></div> ${agentState.detectedLang} — Xác nhận bản dịch rồi copy`;
+
+    setStatus('Xong — đọc bản dịch & copy');
+    setStep('Bước 6 — Xác nhận & copy');
+
+    if (sb && currentUser) {
+      await sb.from('email_logs').insert({
+        user_id: currentUser.id, user_email: currentUser.email,
+        store_id: selectedStore.id, store_name: selectedStore.name,
+        customer_email: agentState.emailText,
+        categories: agentState.analysis.categories,
+        summary: agentState.analysis.history_summary,
+        draft: currentDraft,
+      });
+    }
+
+  } catch(e) {
+    document.getElementById('draft-original').textContent = '⚠️ ' + e.message;
+    setStatus('Lỗi khi soạn email');
+    console.error(e);
+  }
+
+  approveBtn.disabled = false; approveBtn.textContent = '✓ Đồng ý — Viết email';
 }
 
 function copyDraft() {
   if (!currentDraft) return;
   navigator.clipboard.writeText(currentDraft).then(() => {
-    const btn = document.querySelector('.copy-btn');
-    btn.textContent = '✓ Đã copy!';
-    setTimeout(()=>btn.textContent='⎘ Copy draft',2000);
+    const btn = document.getElementById('copy-btn');
+    btn.textContent = '✓ Đã copy! Dán vào email và gửi cho khách';
+    setTimeout(() => btn.textContent = '⎘ Copy email gốc', 3000);
   });
+}
+
+function resetAgent() {
+  document.getElementById('customer-email').value = '';
+  document.getElementById('output-placeholder').classList.remove('hidden');
+  document.getElementById('output-analysis').classList.add('hidden');
+  document.getElementById('draft-section').classList.add('hidden');
+  agentState = { analysis: null, detectedLang: 'English' };
+  currentDraft = '';
+  setStatus('Sẵn sàng');
+  setStep('Bước 1 — Chờ email');
+}
+
+async function redraftWithNote() {
+  const note = prompt('Yêu cầu viết lại (tiếng Việt):');
+  if (!note) return;
+  if (agentState.analysis) {
+    agentState.analysis.direction = agentState.analysis.direction + '. Lưu ý thêm: ' + note;
+  }
+  await writeDraft();
 }
 
 // ── HISTORY ──────────────────────────────────────────
@@ -637,21 +812,22 @@ async function loadHistory() {
 
 function restoreHistory(r) {
   document.getElementById('customer-email').value = r.customer_email||'';
-  if (r.store_id) {
-    document.getElementById('store-select').value = r.store_id;
-    onStoreChange();
-  }
+  if (r.store_id) { document.getElementById('store-select').value = r.store_id; onStoreChange(); }
   showPage('email-agent');
   document.getElementById('output-placeholder').classList.add('hidden');
-  document.getElementById('output-result').classList.remove('hidden');
+  document.getElementById('output-analysis').classList.remove('hidden');
+  document.getElementById('draft-section').classList.remove('hidden');
   document.getElementById('cat-display').innerHTML = '';
   (r.categories||['other']).forEach(c=>{
     const info=CAT[c]||CAT.other;
     document.getElementById('cat-display').innerHTML+=`<span class="tag ${info.cls}">${info.label}</span>`;
   });
-  document.getElementById('summary-display').textContent = r.summary||'';
+  document.getElementById('history-summary').textContent = r.summary||'';
+  document.getElementById('latest-request').textContent = '';
+  document.getElementById('direction-display').textContent = '';
   currentDraft = r.draft||'';
-  document.getElementById('draft-display').textContent = currentDraft;
+  document.getElementById('draft-original').textContent = currentDraft;
+  document.getElementById('draft-vietnamese').textContent = '(Mở lại từ lịch sử — bản dịch không được lưu)';
 }
 
 // ── ADMIN ─────────────────────────────────────────────
