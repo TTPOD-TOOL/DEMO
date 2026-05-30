@@ -952,6 +952,7 @@ async function redraftWithNote() {
 
 // ── CREATIVE AGENT ───────────────────────────────────
 let creativeImageBase64 = null;
+let creativeImageMediaType = 'image/jpeg';
 let selectedCreativeStore = null;
 
 function renderCreativeStores() {
@@ -971,7 +972,9 @@ function onCreativeImageUpload(input) {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = e => {
-    creativeImageBase64 = e.target.result.split(',')[1];
+    const dataUrl = e.target.result;
+    creativeImageMediaType = dataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
+    creativeImageBase64 = dataUrl.split(',')[1];
     document.getElementById('creative-preview-img').src = e.target.result;
     document.getElementById('creative-image-preview').classList.remove('hidden');
     document.getElementById('creative-upload-area').style.display = 'none';
@@ -981,6 +984,7 @@ function onCreativeImageUpload(input) {
 
 function removeCreativeImage() {
   creativeImageBase64 = null;
+  creativeImageMediaType = 'image/jpeg';
   document.getElementById('creative-image-input').value = '';
   document.getElementById('creative-image-preview').classList.add('hidden');
   document.getElementById('creative-upload-area').style.display = 'block';
@@ -1032,7 +1036,7 @@ Always respond ONLY in this exact JSON (no markdown, no extra text):
       messages = [{
         role: 'user',
         content: [
-          { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: creativeImageBase64 } },
+          { type: 'image', source: { type: 'base64', media_type: creativeImageMediaType, data: creativeImageBase64 } },
           { type: 'text', text: `Product type: ${productType}\nDescription: ${description || 'See image'}\nAd goal: ${goalMap[goal]}\nTarget audience: ${audience || 'general POD buyers'}${extraNote ? '\nExtra note: '+extraNote : ''}\n\nAnalyze this product image and create ad creative assets.` }
         ]
       }];
