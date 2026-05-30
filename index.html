@@ -6,6 +6,7 @@
 <title>POD Toolkit — Email Agent</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   :root {
     --bg:#0f0f10; --bg2:#18181b; --bg3:#222228; --border:#2e2e36;
@@ -245,20 +246,45 @@ const CONFIG = {
               <label>Toàn bộ chuỗi email (copy từ đầu đến cuối)</label>
               <textarea class="email-input" id="customer-email" placeholder="Dán toàn bộ chuỗi email vào đây, bao gồm cả các email cũ...&#10;&#10;VD:&#10;--- Email 1 (3 ngày trước) ---&#10;Customer: Hi, I ordered #1234 but haven't received it...&#10;&#10;--- Email 2 (2 ngày trước) ---&#10;Store: Hi! We are checking on your order...&#10;&#10;--- Email 3 (hôm nay) ---&#10;Customer: Still no update, I want a refund!"></textarea>
             </div>
-            <!-- TRACKING SECTION -->
-            <div style="border:1px solid var(--border);border-radius:var(--radius);padding:12px;display:flex;flex-direction:column;gap:8px;background:var(--bg3);">
-              <div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.05em;">📦 TRACKING (tuỳ chọn)</div>
+            <!-- EXCEL LOOKUP + TRACKING SECTION -->
+            <div style="border:1px solid var(--border);border-radius:var(--radius);padding:12px;display:flex;flex-direction:column;gap:10px;background:var(--bg3);">
+              <div style="display:flex;align-items:center;justify-content:space-between;">
+                <div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.05em;">📊 TRA CỨU ĐƠN HÀNG (tuỳ chọn)</div>
+                <div id="excel-status" style="font-size:11px;color:var(--muted);"></div>
+              </div>
+
+              <!-- Upload Excel -->
+              <div id="excel-upload-area" style="display:flex;gap:6px;align-items:center;">
+                <label style="margin:0;flex:1;">
+                  <div style="border:1px dashed var(--border);border-radius:var(--radius);padding:7px 12px;font-size:12px;color:var(--muted);cursor:pointer;text-align:center;transition:border-color .15s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'" id="excel-drop-label">
+                    📂 Upload file Excel / CSV đơn hàng
+                  </div>
+                  <input type="file" id="excel-file-input" accept=".xlsx,.xls,.csv" style="display:none;" onchange="loadExcelFile(this)"/>
+                </label>
+                <button class="btn sm" onclick="clearExcelData()" id="excel-clear-btn" style="display:none;font-size:11px;">✕ Xoá</button>
+              </div>
+
+              <!-- Search by email -->
+              <div id="excel-search-area" style="display:none;flex-direction:column;gap:6px;">
+                <div style="display:flex;gap:6px;">
+                  <input id="excel-search-email" placeholder="Nhập email khách để tìm đơn hàng..." style="flex:1;font-size:12px;padding:7px 10px;" oninput="searchOrderByEmail(this.value)"/>
+                  <button class="btn sm" onclick="searchOrderByEmail(document.getElementById('excel-search-email').value)" style="white-space:nowrap;">🔍</button>
+                </div>
+                <div id="excel-search-result" style="display:none;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:10px;font-size:12px;"></div>
+              </div>
+
+              <!-- Tracking number + link -->
               <div style="display:flex;gap:6px;">
-                <input id="tracking-number" placeholder="Nhập tracking number..." style="flex:1;font-size:12px;padding:7px 10px;font-family:var(--mono);" oninput="updateTrackingLink()"/>
-                <button class="btn" style="font-size:12px;padding:7px 12px;white-space:nowrap;" onclick="openTracking()">🔍 Tra cứu</button>
+                <input id="tracking-number" placeholder="Tracking number (tự điền hoặc nhập tay)..." style="flex:1;font-size:12px;padding:7px 10px;font-family:var(--mono);" oninput="updateTrackingLink()"/>
+                <button class="btn sm" onclick="openTracking()" style="white-space:nowrap;">🔍 17track</button>
               </div>
               <div id="tracking-link-row" class="hidden" style="display:flex;align-items:center;gap:6px;">
                 <span style="font-size:11px;color:var(--muted);">Link:</span>
                 <a id="tracking-link-display" href="#" target="_blank" style="font-size:11px;color:var(--accent);font-family:var(--mono);word-break:break-all;"></a>
               </div>
               <div>
-                <label style="margin-bottom:4px;">Paste kết quả tracking vào đây (sau khi tra cứu)</label>
-                <textarea id="tracking-result" rows="3" style="resize:none;font-size:12px;font-family:var(--mono);" placeholder="VD: Status: In Transit&#10;Last update: 2024-01-15 — Arrived at destination facility, Los Angeles CA&#10;Estimated delivery: Jan 17-19"></textarea>
+                <label style="margin-bottom:4px;">Paste kết quả tracking vào đây (sau khi tra cứu trên 17track)</label>
+                <textarea id="tracking-result" rows="2" style="resize:none;font-size:12px;font-family:var(--mono);" placeholder="VD: In Transit — Arrived Los Angeles CA, Jan 15. Est. delivery Jan 17-19"></textarea>
               </div>
             </div>
             <button class="analyze-btn" id="analyze-btn" onclick="startAnalysis()">✦ Phân tích chuỗi email</button>
@@ -766,6 +792,132 @@ async function savePolicy() {
   setTimeout(() => ind.style.display='none', 2500);
 }
 
+// ── EXCEL ORDER LOOKUP ───────────────────────────────
+let excelData = []; // array of row objects {header: value}
+let excelHeaders = [];
+
+async function loadExcelFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const status = document.getElementById('excel-status');
+  status.textContent = 'Đang đọc file...';
+  status.style.color = 'var(--accent2)';
+
+  try {
+    const buffer = await file.arrayBuffer();
+    let rows = [];
+
+    if (file.name.endsWith('.csv')) {
+      const text = new TextDecoder('utf-8').decode(buffer);
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      excelHeaders = lines[0].split(',').map(h => h.replace(/"/g,'').trim());
+      rows = lines.slice(1).map(line => {
+        const vals = line.split(',').map(v => v.replace(/"/g,'').trim());
+        const obj = {};
+        excelHeaders.forEach((h, i) => obj[h] = vals[i] || '');
+        return obj;
+      });
+    } else {
+      const wb = XLSX.read(buffer, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const raw = XLSX.utils.sheet_to_json(ws, { header: 1 });
+      excelHeaders = (raw[0] || []).map(h => String(h).trim());
+      rows = raw.slice(1).map(row => {
+        const obj = {};
+        excelHeaders.forEach((h, i) => obj[h] = row[i] !== undefined ? String(row[i]).trim() : '');
+        return obj;
+      }).filter(r => Object.values(r).some(v => v));
+    }
+
+    excelData = rows;
+    status.textContent = `✓ ${rows.length} đơn hàng · ${excelHeaders.length} cột`;
+    status.style.color = 'var(--accent2)';
+    document.getElementById('excel-drop-label').textContent = `✓ ${file.name} (${rows.length} dòng)`;
+    document.getElementById('excel-search-area').style.display = 'flex';
+    document.getElementById('excel-clear-btn').style.display = 'block';
+  } catch(e) {
+    status.textContent = 'Lỗi đọc file: ' + e.message;
+    status.style.color = 'var(--danger)';
+  }
+}
+
+function searchOrderByEmail(query) {
+  const q = (query || '').toLowerCase().trim();
+  const resultEl = document.getElementById('excel-search-result');
+  if (!q || excelData.length === 0) { resultEl.style.display = 'none'; return; }
+
+  // Find email column (flexible header detection)
+  const emailCol = excelHeaders.find(h =>
+    /email|e-mail|mail/i.test(h)
+  );
+
+  let matches = [];
+  if (emailCol) {
+    matches = excelData.filter(row =>
+      (row[emailCol] || '').toLowerCase().includes(q)
+    );
+  } else {
+    // Search all columns for email-like match
+    matches = excelData.filter(row =>
+      Object.values(row).some(v => v.toLowerCase().includes(q) && v.includes('@'))
+    );
+  }
+
+  if (!matches.length) {
+    resultEl.style.display = 'block';
+    resultEl.innerHTML = `<span style="color:var(--muted);">Không tìm thấy đơn hàng nào với email "${q}"</span>`;
+    return;
+  }
+
+  // Show results (max 3)
+  resultEl.style.display = 'block';
+  resultEl.innerHTML = matches.slice(0, 3).map((row, idx) => {
+    // Find tracking column
+    const trackCol = excelHeaders.find(h => /track/i.test(h));
+    const trackVal = trackCol ? row[trackCol] : '';
+    // Show all non-empty fields
+    const fields = excelHeaders
+      .filter(h => row[h])
+      .map(h => `<span style="color:var(--muted);font-size:11px;">${h}:</span> <span style="font-size:11px;">${row[h]}</span>`)
+      .join('<br>');
+
+    return `<div style="padding:8px;border:1px solid var(--border);border-radius:6px;margin-bottom:6px;${idx>0?'margin-top:4px':''}" >
+      ${fields}
+      ${trackVal ? `<button class="btn sm" style="margin-top:6px;font-size:11px;" onclick="applyTracking('${trackVal.replace(/'/g,"\\'")}','${JSON.stringify(row).replace(/'/g,"\\'")}')">✓ Dùng tracking này</button>` : ''}
+    </div>`;
+  }).join('') + (matches.length > 3 ? `<div style="font-size:11px;color:var(--muted);">...và ${matches.length-3} đơn khác</div>` : '');
+}
+
+function applyTracking(trackNum, rowJson) {
+  // Fill tracking number
+  document.getElementById('tracking-number').value = trackNum;
+  updateTrackingLink();
+
+  // Fill order info into tracking result for agent context
+  try {
+    const row = JSON.parse(rowJson);
+    const info = Object.entries(row)
+      .filter(([k,v]) => v)
+      .map(([k,v]) => `${k}: ${v}`)
+      .join('\n');
+    document.getElementById('tracking-result').value = info;
+  } catch(e) {}
+
+  document.getElementById('excel-search-result').innerHTML =
+    `<span style="color:var(--accent2);">✓ Đã điền tracking: ${trackNum}</span>`;
+}
+
+function clearExcelData() {
+  excelData = []; excelHeaders = [];
+  document.getElementById('excel-file-input').value = '';
+  document.getElementById('excel-drop-label').textContent = '📂 Upload file Excel / CSV đơn hàng';
+  document.getElementById('excel-search-area').style.display = 'none';
+  document.getElementById('excel-search-result').style.display = 'none';
+  document.getElementById('excel-clear-btn').style.display = 'none';
+  document.getElementById('excel-status').textContent = '';
+  document.getElementById('excel-search-email').value = '';
+}
+
 // ── TRACKING ─────────────────────────────────────────
 function updateTrackingLink() {
   const num = document.getElementById('tracking-number').value.trim();
@@ -1077,6 +1229,8 @@ function resetAgent() {
   document.getElementById('tracking-number').value = '';
   document.getElementById('tracking-result').value = '';
   document.getElementById('tracking-link-row').classList.add('hidden');
+  document.getElementById('excel-search-email').value = '';
+  document.getElementById('excel-search-result').style.display = 'none';
   document.getElementById('output-placeholder').classList.remove('hidden');
   document.getElementById('output-analysis').classList.add('hidden');
   document.getElementById('draft-section').classList.add('hidden');
