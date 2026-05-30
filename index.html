@@ -604,6 +604,11 @@ Reply ONLY in this exact JSON (no markdown, no extra text):
       })
     });
     const data = await res.json();
+    if (!res.ok || data.error) {
+      const msg = data.error?.message || data.error?.type || JSON.stringify(data);
+      throw new Error('Claude API lỗi: ' + msg);
+    }
+    if (!data.content) throw new Error('Không nhận được phản hồi từ AI. Kiểm tra lại Claude API key trong Worker.');
     const text = data.content.map(i => i.text || '').join('');
     const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
 
@@ -634,7 +639,10 @@ Reply ONLY in this exact JSON (no markdown, no extra text):
     }
   } catch (e) {
     badge.className = 'status-pill';
-    badge.innerHTML = '<div class="dot" style="color:var(--danger)"></div> Lỗi — thử lại';
+    badge.innerHTML = '<div class="dot" style="color:var(--danger)"></div> Lỗi!';
+    document.getElementById('output-placeholder').classList.add('hidden');
+    document.getElementById('output-result').classList.remove('hidden');
+    document.getElementById('summary-display').textContent = '⚠️ ' + e.message;
     console.error(e);
   }
 
