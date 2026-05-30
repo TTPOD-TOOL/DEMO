@@ -74,15 +74,15 @@
   .topbar{padding:16px 28px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg2);}
   .topbar-title{font-size:15px;font-weight:600;}
   .topbar-sub{font-size:12px;color:var(--muted);margin-top:1px;}
-  .content{flex:1;padding:24px 28px;overflow-y:auto;}
+  .content{flex:1;padding:24px 28px;overflow-y:auto;height:calc(100vh - 70px);}
 
   /* PANELS */
-  .panel{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:12px;overflow:hidden;}
+  .panel{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:12px;}
   .panel-head{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.05em;}
 
   /* EMAIL AGENT */
-  .agent-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;height:calc(100vh - 160px);}
-  .email-input{flex:1;resize:none;min-height:160px;font-size:13px;line-height:1.6;}
+  .agent-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .email-input{resize:vertical;min-height:140px;max-height:300px;font-size:13px;line-height:1.6;}
   .analyze-btn{width:100%;padding:10px;border-radius:var(--radius);background:var(--accent);border:none;color:#fff;font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:opacity .15s;}
   .analyze-btn:hover{opacity:.88;}
   .analyze-btn:disabled{opacity:.45;cursor:not-allowed;}
@@ -92,7 +92,7 @@
   .dot.pulse{animation:pulse 1s infinite;}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
   .summary-box{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;font-size:12px;color:var(--muted);line-height:1.6;}
-  .draft-box{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:12px;font-size:13px;line-height:1.7;white-space:pre-wrap;overflow-y:auto;color:var(--text);}
+  .draft-box{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:12px;font-size:13px;line-height:1.7;white-space:pre-wrap;overflow-y:auto;color:var(--text);min-height:160px;}
   .draft-placeholder{color:var(--muted);font-size:13px;text-align:center;margin:auto;padding:24px;}
   .copy-btn{width:100%;padding:8px;border-radius:var(--radius);border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--font);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s;}
   .copy-btn:hover{border-color:var(--accent2);color:var(--accent2);}
@@ -304,7 +304,7 @@ const CONFIG = {
               </div>
             </div>
 
-            <div id="output-analysis" class="hidden" style="flex:1;display:flex;flex-direction:column;gap:10px;overflow-y:auto;">
+            <div id="output-analysis" class="hidden" style="display:flex;flex-direction:column;gap:10px;">
               <div>
                 <label>Phân loại vấn đề</label>
                 <div class="cat-row" id="cat-display"></div>
@@ -871,40 +871,41 @@ function searchOrderByEmail(query) {
 
   // Show results (max 3)
   resultEl.style.display = 'block';
-  resultEl.innerHTML = matches.slice(0, 3).map((row, idx) => {
-    // Find tracking column
+  resultEl.style.maxHeight = '200px';
+  resultEl.style.overflowY = 'auto';
+
+  // Key fields to show (prioritize important info)
+  const keyPatterns = [/name|tên/i, /email|mail/i, /order|đơn/i, /track/i, /product|sản phẩm/i, /size/i, /sku/i, /status|trạng thái/i];
+
+  resultEl.innerHTML = matches.slice(0, 5).map((row, idx) => {
     const trackCol = excelHeaders.find(h => /track/i.test(h));
     const trackVal = trackCol ? row[trackCol] : '';
-    // Show all non-empty fields
-    const fields = excelHeaders
-      .filter(h => row[h])
-      .map(h => `<span style="color:var(--muted);font-size:11px;">${h}:</span> <span style="font-size:11px;">${row[h]}</span>`)
-      .join('<br>');
+    const rowJson = JSON.stringify(row).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
 
-    return `<div style="padding:8px;border:1px solid var(--border);border-radius:6px;margin-bottom:6px;${idx>0?'margin-top:4px':''}" >
-      ${fields}
-      ${trackVal ? `<button class="btn sm" style="margin-top:6px;font-size:11px;" onclick="applyTracking('${trackVal.replace(/'/g,"\\'")}','${JSON.stringify(row).replace(/'/g,"\\'")}')">✓ Dùng tracking này</button>` : ''}
+    // Show key fields only (max 6 fields)
+    const keyFields = excelHeaders.filter(h => row[h] && keyPatterns.some(p => p.test(h))).slice(0,6);
+    const showFields = keyFields.length > 0 ? keyFields : excelHeaders.filter(h => row[h]).slice(0,6);
+    const fields = showFields.map(h =>
+      `<span style="color:var(--muted);font-size:11px;">${h}:</span> <span style="font-size:11px;font-weight:500;">${row[h]}</span>`
+    ).join(' &nbsp;·&nbsp; ');
+
+    return `<div style="padding:7px 8px;border:1px solid var(--border);border-radius:6px;margin-bottom:5px;">
+      <div style="line-height:1.8;">${fields}</div>
+      ${trackVal ? `<button class="btn sm" style="margin-top:5px;font-size:11px;" onclick="applyTracking('${trackVal.replace(/'/g,"\\'")}','${rowJson}')">✓ Dùng tracking: ${trackVal}</button>` : '<div style="font-size:11px;color:var(--muted);margin-top:4px;">⚠ Không tìm thấy tracking number</div>'}
     </div>`;
-  }).join('') + (matches.length > 3 ? `<div style="font-size:11px;color:var(--muted);">...và ${matches.length-3} đơn khác</div>` : '');
+  }).join('') + (matches.length > 5 ? `<div style="font-size:11px;color:var(--muted);padding:4px 0;">...và ${matches.length-5} đơn khác — hãy nhập email chính xác hơn</div>` : '');
 }
 
 function applyTracking(trackNum, rowJson) {
-  // Fill tracking number
   document.getElementById('tracking-number').value = trackNum;
   updateTrackingLink();
-
-  // Fill order info into tracking result for agent context
   try {
     const row = JSON.parse(rowJson);
-    const info = Object.entries(row)
-      .filter(([k,v]) => v)
-      .map(([k,v]) => `${k}: ${v}`)
-      .join('\n');
+    const info = Object.entries(row).filter(([k,v]) => v).map(([k,v]) => `${k}: ${v}`).join('\n');
     document.getElementById('tracking-result').value = info;
   } catch(e) {}
-
   document.getElementById('excel-search-result').innerHTML =
-    `<span style="color:var(--accent2);">✓ Đã điền tracking: ${trackNum}</span>`;
+    `<div style="color:var(--accent2);font-size:12px;">✓ Đã điền tracking: ${trackNum}</div>`;
 }
 
 function clearExcelData() {
