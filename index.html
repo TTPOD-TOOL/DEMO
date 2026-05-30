@@ -245,6 +245,22 @@ const CONFIG = {
               <label>Toàn bộ chuỗi email (copy từ đầu đến cuối)</label>
               <textarea class="email-input" id="customer-email" placeholder="Dán toàn bộ chuỗi email vào đây, bao gồm cả các email cũ...&#10;&#10;VD:&#10;--- Email 1 (3 ngày trước) ---&#10;Customer: Hi, I ordered #1234 but haven't received it...&#10;&#10;--- Email 2 (2 ngày trước) ---&#10;Store: Hi! We are checking on your order...&#10;&#10;--- Email 3 (hôm nay) ---&#10;Customer: Still no update, I want a refund!"></textarea>
             </div>
+            <!-- TRACKING SECTION -->
+            <div style="border:1px solid var(--border);border-radius:var(--radius);padding:12px;display:flex;flex-direction:column;gap:8px;background:var(--bg3);">
+              <div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.05em;">📦 TRACKING (tuỳ chọn)</div>
+              <div style="display:flex;gap:6px;">
+                <input id="tracking-number" placeholder="Nhập tracking number..." style="flex:1;font-size:12px;padding:7px 10px;font-family:var(--mono);" oninput="updateTrackingLink()"/>
+                <button class="btn" style="font-size:12px;padding:7px 12px;white-space:nowrap;" onclick="openTracking()">🔍 Tra cứu</button>
+              </div>
+              <div id="tracking-link-row" class="hidden" style="display:flex;align-items:center;gap:6px;">
+                <span style="font-size:11px;color:var(--muted);">Link:</span>
+                <a id="tracking-link-display" href="#" target="_blank" style="font-size:11px;color:var(--accent);font-family:var(--mono);word-break:break-all;"></a>
+              </div>
+              <div>
+                <label style="margin-bottom:4px;">Paste kết quả tracking vào đây (sau khi tra cứu)</label>
+                <textarea id="tracking-result" rows="3" style="resize:none;font-size:12px;font-family:var(--mono);" placeholder="VD: Status: In Transit&#10;Last update: 2024-01-15 — Arrived at destination facility, Los Angeles CA&#10;Estimated delivery: Jan 17-19"></textarea>
+              </div>
+            </div>
             <button class="analyze-btn" id="analyze-btn" onclick="startAnalysis()">✦ Phân tích chuỗi email</button>
           </div>
 
@@ -750,6 +766,29 @@ async function savePolicy() {
   setTimeout(() => ind.style.display='none', 2500);
 }
 
+// ── TRACKING ─────────────────────────────────────────
+function updateTrackingLink() {
+  const num = document.getElementById('tracking-number').value.trim();
+  const row = document.getElementById('tracking-link-row');
+  const link = document.getElementById('tracking-link-display');
+  if (num) {
+    const url = `https://t.17track.net/en#nums=${encodeURIComponent(num)}`;
+    link.href = url;
+    link.textContent = url;
+    row.classList.remove('hidden');
+    row.style.display = 'flex';
+  } else {
+    row.classList.add('hidden');
+  }
+}
+
+function openTracking() {
+  const num = document.getElementById('tracking-number').value.trim();
+  if (!num) { alert('Vui lòng nhập tracking number!'); return; }
+  const url = `https://t.17track.net/en#nums=${encodeURIComponent(num)}`;
+  window.open(url, '_blank');
+}
+
 // ── EMAIL AGENT (v4) ─────────────────────────────────
 let agentState = { analysis: null, detectedLang: 'English' };
 
@@ -821,6 +860,16 @@ ${s.example_phrases?.length ? '- Trigger phrases: '+s.example_phrases.join(' / '
 When you identify a matching scenario, apply its handling direction and tone in your recommendation.
 ` : '';
 
+  // Get tracking info if available
+  const trackingNumber = document.getElementById('tracking-number').value.trim();
+  const trackingResult = document.getElementById('tracking-result').value.trim();
+  const trackingCtx = (trackingNumber || trackingResult) ? `
+TRACKING INFO:
+${trackingNumber ? `Tracking number: ${trackingNumber}` : ''}
+${trackingResult ? `Current tracking status:\n${trackingResult}` : '(Status not yet checked)'}
+Use this tracking information when suggesting how to handle the customer's inquiry.
+` : '';
+
   const system = `You are a senior customer service manager for a POD store on ShopBase.
 Analyze the full email thread provided and respond ONLY in this exact JSON (no markdown, no extra text):
 {
@@ -834,7 +883,7 @@ Analyze the full email thread provided and respond ONLY in this exact JSON (no m
 
 STORE INFO: ${storeCtx}
 POLICIES: ${policyCtx}
-${scenariosCtx}`;
+${trackingCtx}${scenariosCtx}`;
 
   try {
     const text = await callClaude(system, `Full email thread:\n${emailText}`);
@@ -882,6 +931,16 @@ async function submitFeedback() {
   setStatus('Đang điều chỉnh hướng xử lý...', true);
 
   const { storeCtx, policyCtx } = buildStoreContext();
+  // Get tracking info if available
+  const trackingNumber = document.getElementById('tracking-number').value.trim();
+  const trackingResult = document.getElementById('tracking-result').value.trim();
+  const trackingCtx = (trackingNumber || trackingResult) ? `
+TRACKING INFO:
+${trackingNumber ? `Tracking number: ${trackingNumber}` : ''}
+${trackingResult ? `Current tracking status:\n${trackingResult}` : '(Status not yet checked)'}
+Use this tracking information when suggesting how to handle the customer's inquiry.
+` : '';
+
   const system = `You are a senior customer service manager for a POD store on ShopBase.
 The staff has reviewed your suggested direction and provided feedback. Update the direction accordingly.
 Respond ONLY in this exact JSON:
@@ -982,6 +1041,9 @@ function copyDraft() {
 
 function resetAgent() {
   document.getElementById('customer-email').value = '';
+  document.getElementById('tracking-number').value = '';
+  document.getElementById('tracking-result').value = '';
+  document.getElementById('tracking-link-row').classList.add('hidden');
   document.getElementById('output-placeholder').classList.remove('hidden');
   document.getElementById('output-analysis').classList.add('hidden');
   document.getElementById('draft-section').classList.add('hidden');
