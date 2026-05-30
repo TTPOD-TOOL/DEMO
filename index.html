@@ -244,7 +244,7 @@ const CONFIG = {
             </div>
             <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
               <label>Toàn bộ chuỗi email (copy từ đầu đến cuối)</label>
-              <textarea class="email-input" id="customer-email" placeholder="Dán toàn bộ chuỗi email vào đây, bao gồm cả các email cũ...&#10;&#10;VD:&#10;--- Email 1 (3 ngày trước) ---&#10;Customer: Hi, I ordered #1234 but haven't received it...&#10;&#10;--- Email 2 (2 ngày trước) ---&#10;Store: Hi! We are checking on your order...&#10;&#10;--- Email 3 (hôm nay) ---&#10;Customer: Still no update, I want a refund!"></textarea>
+              <textarea class="email-input" id="customer-email" placeholder="Dán toàn bộ chuỗi email vào đây, bao gồm cả các email cũ...&#10;&#10;VD:&#10;--- Email 1 (3 ngày trước) ---&#10;Customer: Hi, I ordered #1234 but haven't received it...&#10;&#10;--- Email 2 (2 ngày trước) ---&#10;Store: Hi! We are checking on your order...&#10;&#10;--- Email 3 (hôm nay) ---&#10;Customer: Still no update, I want a refund!" onblur="autoLookupFromEmail()" onpaste="setTimeout(autoLookupFromEmail, 100)"></textarea>
             </div>
             <!-- EXCEL LOOKUP + TRACKING SECTION -->
             <div style="border:1px solid var(--border);border-radius:var(--radius);padding:12px;display:flex;flex-direction:column;gap:10px;background:var(--bg3);">
@@ -267,7 +267,7 @@ const CONFIG = {
               <!-- Search by email -->
               <div id="excel-search-area" style="display:none;flex-direction:column;gap:6px;">
                 <div style="display:flex;gap:6px;">
-                  <input id="excel-search-email" placeholder="Nhập email khách để tìm đơn hàng..." style="flex:1;font-size:12px;padding:7px 10px;" oninput="searchOrderByEmail(this.value)"/>
+                  <input id="excel-search-email" placeholder="Email tự điền từ chuỗi email, hoặc nhập tay..." style="flex:1;font-size:12px;padding:7px 10px;" oninput="searchOrderByEmail(this.value)"/>
                   <button class="btn sm" onclick="searchOrderByEmail(document.getElementById('excel-search-email').value)" style="white-space:nowrap;">🔍</button>
                 </div>
                 <div id="excel-search-result" style="display:none;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:10px;font-size:12px;"></div>
@@ -839,6 +839,100 @@ async function loadExcelFile(input) {
     status.textContent = 'Lỗi đọc file: ' + e.message;
     status.style.color = 'var(--danger)';
   }
+}
+
+function autoLookupFromEmail() {
+  const emailText = document.getElementById('customer-email').value;
+  if (!emailText || excelData.length === 0) return;
+
+  // Extract all email addresses from the thread
+  const emailRegex = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+  const allEmails = [...new Set(emailText.match(emailRegex) || [])];
+  if (!allEmails.length) return;
+
+  // Find store email to exclude it
+  const storeEmail = selectedStore?.email?.toLowerCase() || '';
+  const customerEmails = allEmails.filter(e => {
+    const el = e.toLowerCase();
+    // Exclude store email and common no-reply patterns
+    return el !== storeEmail &&
+      !el.includes('noreply') &&
+      !el.includes('no-reply') &&
+      !el.includes('donotreply') &&
+      !el.includes('mailer') &&
+      !el.includes('notification');
+  });
+
+  if (!customerEmails.length) return;
+
+  // Try each customer email, use first match found
+  for (const email of customerEmails) {
+    const emailCol = excelHeaders.find(h => /email|mail/i.test(h));
+    let matches = [];
+    if (emailCol) {
+      matches = excelData.filter(row =>
+        (row[emailCol] || '').toLowerCase() === email.toLowerCase()
+      );
+    }
+    if (!matches.length) {
+      matches = excelData.filter(row =>
+        Object.values(row).some(v =>
+          typeof v === 'string' && v.toLowerCase() === email.toLowerCase()
+        )
+      );
+    }
+
+    if (matches.length > 0) {
+      // Found! Fill email search field and show result
+      document.getElementById('excel-search-email').value = email;
+      document.getElementById('excel-search-area').style.display = 'flex';
+
+      const trackCol = excelHeaders.find(h => /track/i.test(h));
+      const match = matches[0];
+      const trackVal = trackCol ? match[trackCol] : '';
+
+      if (trackVal) {
+        // Auto apply tracking directly
+        document.getElementById('tracking-number').value = trackVal;
+        updateTrackingLink();
+        const rowJson = JSON.stringify(match).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        // Fill order info for agent context
+        const info = Object.entries(match).filter(([k,v]) => v).map(([k,v]) => `${k}: ${v}`).join('\n');
+        document.getElementById('tracking-result').value = info;
+
+        // Show auto-filled notice
+        const resultEl = document.getElementById('excel-search-result');
+        resultEl.style.display = 'block';
+        resultEl.style.maxHeight = '200px';
+        resultEl.style.overflowY = 'auto';
+        const keyPatterns = [/name|tên/i,/email|mail/i,/order|đơn/i,/track/i,/product|sản phẩm/i,/size/i,/sku/i];
+        const showFields = excelHeaders.filter(h => match[h] && keyPatterns.some(p => p.test(h))).slice(0,6);
+        const allFields = showFields.length > 0 ? showFields : excelHeaders.filter(h => match[h]).slice(0,6);
+        const fields = allFields.map(h =>
+          `<span style="color:var(--muted);font-size:11px;">${h}:</span> <span style="font-size:11px;font-weight:500;">${match[h]}</span>`
+        ).join(' &nbsp;·&nbsp; ');
+        resultEl.innerHTML = `<div style="color:var(--accent2);font-size:12px;margin-bottom:6px;">✓ Tìm thấy đơn hàng — tracking đã tự điền</div>
+          <div style="padding:7px 8px;border:1px solid var(--border);border-radius:6px;line-height:1.8;">${fields}</div>`;
+      } else {
+        // Found order but no tracking — show status
+        const resultEl = document.getElementById('excel-search-result');
+        resultEl.style.display = 'block';
+        const keyPatterns = [/name|tên/i,/email|mail/i,/order|đơn/i,/product|sản phẩm/i,/size/i,/status/i];
+        const showFields = excelHeaders.filter(h => match[h] && keyPatterns.some(p => p.test(h))).slice(0,6);
+        const allFields = showFields.length > 0 ? showFields : excelHeaders.filter(h => match[h]).slice(0,6);
+        const fields = allFields.map(h =>
+          `<span style="color:var(--muted);font-size:11px;">${h}:</span> <span style="font-size:11px;font-weight:500;">${match[h]}</span>`
+        ).join(' &nbsp;·&nbsp; ');
+        // Fill order info without tracking
+        const info = Object.entries(match).filter(([k,v]) => v).map(([k,v]) => `${k}: ${v}`).join('\n');
+        document.getElementById('tracking-result').value = info;
+        resultEl.innerHTML = `<div style="color:var(--warn);font-size:12px;margin-bottom:6px;">⏳ Tìm thấy đơn hàng — chưa có mã tracking (đang xử lý)</div>
+          <div style="padding:7px 8px;border:1px solid var(--border);border-radius:6px;line-height:1.8;">${fields}</div>`;
+      }
+      return; // Stop after first match
+    }
+  }
+  // No match found — clear tracking
 }
 
 function searchOrderByEmail(query) {
