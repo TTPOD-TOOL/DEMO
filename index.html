@@ -711,12 +711,69 @@ const CONFIG = {
           </div>
         </div>
 
-        <!-- LOGS TAB -->
+        <!-- LOGS TAB - DASHBOARD -->
         <div id="admin-tab-logs" class="hidden">
-          <div class="panel" style="height:auto;">
-            <div class="panel-head">Hoạt động gần đây — tất cả nhân viên</div>
-            <div id="admin-logs-content"></div>
+
+          <!-- Filter bar -->
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
+            <select id="dash-filter-days" onchange="renderDashboard()" style="width:auto;padding:6px 10px;font-size:12px;">
+              <option value="7">7 ngày qua</option>
+              <option value="30" selected>30 ngày qua</option>
+              <option value="90">3 tháng qua</option>
+              <option value="9999">Tất cả</option>
+            </select>
+            <select id="dash-filter-user" onchange="renderDashboard()" style="width:auto;padding:6px 10px;font-size:12px;">
+              <option value="">Tất cả nhân viên</option>
+            </select>
+            <span id="dash-last-updated" style="font-size:11px;color:var(--muted);margin-left:auto;"></span>
           </div>
+
+          <!-- Stat cards -->
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;">
+            <div class="stat-card">
+              <div class="stat-num" id="dash-total">—</div>
+              <div class="stat-label">Tổng email xử lý</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-num" id="dash-today">—</div>
+              <div class="stat-label">Hôm nay</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-num" id="dash-users">—</div>
+              <div class="stat-label">Nhân viên active</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-num" id="dash-avg">—</div>
+              <div class="stat-label">TB email/người/ngày</div>
+            </div>
+          </div>
+
+          <!-- Per-user breakdown -->
+          <div class="panel" style="height:auto;margin-bottom:16px;">
+            <div class="panel-head">👥 Thống kê theo nhân viên</div>
+            <table class="data-table" id="dash-user-table">
+              <thead><tr><th>Nhân viên</th><th>Tổng</th><th>Hôm nay</th><th>Tuần này</th><th>Lần cuối sử dụng</th><th>Hoạt động</th></tr></thead>
+              <tbody id="dash-user-tbody"></tbody>
+            </table>
+          </div>
+
+          <!-- Activity by hour chart (simple bar) -->
+          <div class="panel" style="height:auto;margin-bottom:16px;">
+            <div class="panel-head">⏰ Hoạt động theo giờ trong ngày</div>
+            <div id="dash-hour-chart" style="display:flex;align-items:flex-end;gap:3px;height:80px;padding:8px 0;"></div>
+            <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);padding:0 2px;">
+              <span>0h</span><span>4h</span><span>8h</span><span>12h</span><span>16h</span><span>20h</span><span>23h</span>
+            </div>
+          </div>
+
+          <!-- Activity timeline -->
+          <div class="panel" style="height:auto;">
+            <div class="panel-head" style="justify-content:space-between;">
+              <span>📅 Lịch sử hoạt động (theo ngày)</span>
+            </div>
+            <div id="dash-timeline"></div>
+          </div>
+
         </div>
 
       </div>
@@ -835,6 +892,7 @@ function switchAdminTab(tab) {
   });
   if (tab === 'policy') loadPolicyFields();
   if (tab === 'scenarios') loadScenarios();
+  if (tab === 'logs') renderDashboard();
 }
 
 // ── STORES ───────────────────────────────────────────
@@ -1991,18 +2049,113 @@ async function loadAdminData() {
       <td style="font-family:var(--mono)">${counts[email]||0}</td>
     </tr>`).join('') || '<tr><td colspan="3" style="color:var(--muted)">Chưa có hoạt động.</td></tr>';
 
-  document.getElementById('admin-logs-content').innerHTML = (logs||[]).slice(0,15).map(l=>`
-    <div class="log-item">
-      <div class="log-badge">EMAIL</div>
-      <div class="log-content">
-        <div style="display:flex;gap:8px;align-items:center;">
-          <span style="font-weight:500">${l.user_email}</span>
-          ${l.store_name?`<span class="tag tag-teal" style="font-size:10px">🏪 ${l.store_name}</span>`:''}
+  // Store logs for dashboard
+  window._allAdminLogs = logs || [];
+  renderDashboard();
+}
+
+function renderDashboard() {
+  const logs = window._allAdminLogs || [];
+  const days = parseInt(document.getElementById('dash-filter-days')?.value || '30');
+  const filterUser = document.getElementById('dash-filter-user')?.value || '';
+  const now = new Date();
+  const cutoff = new Date(now - days * 86400000);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const weekAgo = new Date(now - 7 * 86400000);
+
+  // Filter by date
+  const filtered = logs.filter(l => new Date(l.created_at) >= cutoff);
+  const userFiltered = filterUser ? filtered.filter(l => l.user_email === filterUser) : filtered;
+
+  // Populate user filter dropdown
+  const userSel = document.getElementById('dash-filter-user');
+  if (userSel) {
+    const uniqueEmails = [...new Set(logs.map(l => l.user_email))];
+    const current = userSel.value;
+    userSel.innerHTML = '<option value="">Tất cả nhân viên</option>' +
+      uniqueEmails.map(e => `<option value="${e}" ${e===current?'selected':''}>${e}</option>`).join('');
+  }
+
+  // Stats
+  const todayLogs = userFiltered.filter(l => new Date(l.created_at) >= today);
+  const uniqueUsers = [...new Set(userFiltered.map(l => l.user_email))];
+  const daysRange = Math.min(days, Math.max(1, Math.ceil((now - cutoff) / 86400000)));
+  const avg = uniqueUsers.length ? (userFiltered.length / uniqueUsers.length / daysRange).toFixed(1) : '0';
+
+  document.getElementById('dash-total').textContent = userFiltered.length;
+  document.getElementById('dash-today').textContent = todayLogs.length;
+  document.getElementById('dash-users').textContent = uniqueUsers.length;
+  document.getElementById('dash-avg').textContent = avg;
+  document.getElementById('dash-last-updated').textContent = 'Cập nhật: ' + new Date().toLocaleTimeString('vi-VN');
+
+  // Per-user table
+  const userStats = {};
+  userFiltered.forEach(l => {
+    const e = l.user_email;
+    if (!userStats[e]) userStats[e] = { total:0, today:0, week:0, last:null };
+    userStats[e].total++;
+    if (new Date(l.created_at) >= today) userStats[e].today++;
+    if (new Date(l.created_at) >= weekAgo) userStats[e].week++;
+    if (!userStats[e].last || new Date(l.created_at) > new Date(userStats[e].last)) userStats[e].last = l.created_at;
+  });
+
+  const tbody = document.getElementById('dash-user-tbody');
+  const sortedUsers = Object.entries(userStats).sort((a,b) => b[1].total - a[1].total);
+  tbody.innerHTML = sortedUsers.map(([email, s]) => {
+    const isAdmin = email === CONFIG.ADMIN_EMAIL;
+    const lastStr = s.last ? new Date(s.last).toLocaleString('vi-VN') : '—';
+    const actPct = Math.round(s.total / Math.max(...Object.values(userStats).map(x=>x.total)) * 100);
+    return `<tr>
+      <td>
+        <div style="font-size:13px;">${email}</div>
+        <span class="tag ${isAdmin?'tag-amber':'tag-blue'}" style="font-size:10px;">${isAdmin?'admin':'staff'}</span>
+      </td>
+      <td style="font-family:var(--mono);font-weight:500;">${s.total}</td>
+      <td style="font-family:var(--mono);">${s.today || '—'}</td>
+      <td style="font-family:var(--mono);">${s.week}</td>
+      <td style="font-size:12px;color:var(--muted);">${lastStr}</td>
+      <td>
+        <div style="background:var(--bg3);border-radius:4px;height:6px;width:100%;min-width:60px;">
+          <div style="background:var(--accent);height:6px;border-radius:4px;width:${actPct}%;"></div>
         </div>
-        <div style="margin-top:2px">${l.summary||''}</div>
-        <div class="log-time">${new Date(l.created_at).toLocaleString('vi-VN')}</div>
+      </td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="6" style="color:var(--muted);">Chưa có dữ liệu.</td></tr>';
+
+  // Hourly chart
+  const hourCounts = new Array(24).fill(0);
+  userFiltered.forEach(l => {
+    const h = new Date(l.created_at).getHours();
+    hourCounts[h]++;
+  });
+  const maxHour = Math.max(...hourCounts, 1);
+  const chartEl = document.getElementById('dash-hour-chart');
+  chartEl.innerHTML = hourCounts.map((c, h) => {
+    const pct = Math.round(c / maxHour * 100);
+    const isNow = new Date().getHours() === h;
+    return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;" title="${h}h: ${c} email">
+      <div style="font-size:9px;color:var(--muted);">${c||''}</div>
+      <div style="width:100%;background:${isNow?'var(--accent2)':'var(--accent)'};opacity:${c?0.4+0.6*pct/100:0.1};border-radius:2px 2px 0 0;height:${Math.max(2,pct)}%;min-height:2px;"></div>
+    </div>`;
+  }).join('');
+
+  // Timeline by day
+  const dayCounts = {};
+  userFiltered.forEach(l => {
+    const d = new Date(l.created_at).toLocaleDateString('vi-VN');
+    dayCounts[d] = (dayCounts[d]||0) + 1;
+  });
+  const sortedDays = Object.entries(dayCounts).sort((a,b) => new Date(b[0].split('/').reverse().join('-')) - new Date(a[0].split('/').reverse().join('-'))).slice(0,14);
+  const maxDay = Math.max(...sortedDays.map(([,v])=>v), 1);
+  document.getElementById('dash-timeline').innerHTML = sortedDays.map(([d,c]) =>
+    `<div style="display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:0.5px solid var(--border);">
+      <div style="font-size:12px;color:var(--muted);width:80px;flex-shrink:0;">${d}</div>
+      <div style="flex:1;background:var(--bg3);border-radius:4px;height:8px;">
+        <div style="background:var(--accent);height:8px;border-radius:4px;width:${Math.round(c/maxDay*100)}%;"></div>
       </div>
-    </div>`).join('') || '<div style="color:var(--muted);font-size:13px">Chưa có hoạt động.</div>';
+      <div style="font-size:12px;font-family:var(--mono);width:30px;text-align:right;">${c}</div>
+    </div>`
+  ).join('') || '<div style="color:var(--muted);font-size:13px;padding:10px 0;">Chưa có dữ liệu trong khoảng thời gian này.</div>';
 }
 
 // ── STORE MODAL ───────────────────────────────────────
