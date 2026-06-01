@@ -2193,7 +2193,7 @@ function renderDashboard() {
         </div>
       </td>
       <td><span style="font-family:var(--mono);font-size:14px;font-weight:600;">${s.total}</span></td>
-      <td style="font-family:var(--mono);">${s.today || <span style="color:var(--muted)">0</span>}</td>
+      <td style="font-family:var(--mono);color:${s.today?'inherit':'var(--muted)'};">${s.today || 0}</td>
       <td style="font-family:var(--mono);">${s.week}</td>
       <td style="font-size:12px;color:var(--muted);">${s.last ? new Date(s.last).toLocaleString('vi-VN') : '—'}</td>
       <td>
