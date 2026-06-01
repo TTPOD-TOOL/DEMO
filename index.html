@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
   :root {
     --bg:#0f0f10; --bg2:#18181b; --bg3:#222228; --border:#2e2e36;
@@ -730,48 +731,37 @@ const CONFIG = {
 
           <!-- Stat cards -->
           <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;">
-            <div class="stat-card">
-              <div class="stat-num" id="dash-total">—</div>
-              <div class="stat-label">Tổng email xử lý</div>
+            <div class="stat-card"><div class="stat-num" id="dash-total">—</div><div class="stat-label">Tổng email xử lý</div></div>
+            <div class="stat-card"><div class="stat-num" id="dash-today">—</div><div class="stat-label">Hôm nay</div></div>
+            <div class="stat-card"><div class="stat-num" id="dash-users">—</div><div class="stat-label">Nhân viên active</div></div>
+            <div class="stat-card"><div class="stat-num" id="dash-avg">—</div><div class="stat-label">TB email/người/ngày</div></div>
+          </div>
+
+          <!-- Row 1: Line chart (daily) + Pie chart (per user) -->
+          <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:14px;">
+            <div class="panel" style="height:auto;">
+              <div class="panel-head">📅 Email xử lý theo ngày</div>
+              <canvas id="chart-daily" height="120"></canvas>
             </div>
-            <div class="stat-card">
-              <div class="stat-num" id="dash-today">—</div>
-              <div class="stat-label">Hôm nay</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-num" id="dash-users">—</div>
-              <div class="stat-label">Nhân viên active</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-num" id="dash-avg">—</div>
-              <div class="stat-label">TB email/người/ngày</div>
+            <div class="panel" style="height:auto;">
+              <div class="panel-head">👥 Phân bổ theo nhân viên</div>
+              <canvas id="chart-user-pie" height="120"></canvas>
             </div>
           </div>
 
-          <!-- Per-user breakdown -->
-          <div class="panel" style="height:auto;margin-bottom:16px;">
-            <div class="panel-head">👥 Thống kê theo nhân viên</div>
-            <table class="data-table" id="dash-user-table">
-              <thead><tr><th>Nhân viên</th><th>Tổng</th><th>Hôm nay</th><th>Tuần này</th><th>Lần cuối sử dụng</th><th>Hoạt động</th></tr></thead>
+          <!-- Row 2: Bar chart (hourly) -->
+          <div class="panel" style="height:auto;margin-bottom:14px;">
+            <div class="panel-head">⏰ Hoạt động theo giờ trong ngày</div>
+            <canvas id="chart-hourly" height="80"></canvas>
+          </div>
+
+          <!-- Row 3: User table with sparkline -->
+          <div class="panel" style="height:auto;">
+            <div class="panel-head">📊 Chi tiết theo nhân viên</div>
+            <table class="data-table">
+              <thead><tr><th>Nhân viên</th><th>Tổng</th><th>Hôm nay</th><th>Tuần này</th><th>Lần cuối dùng</th><th>% tổng</th></tr></thead>
               <tbody id="dash-user-tbody"></tbody>
             </table>
-          </div>
-
-          <!-- Activity by hour chart (simple bar) -->
-          <div class="panel" style="height:auto;margin-bottom:16px;">
-            <div class="panel-head">⏰ Hoạt động theo giờ trong ngày</div>
-            <div id="dash-hour-chart" style="display:flex;align-items:flex-end;gap:3px;height:80px;padding:8px 0;"></div>
-            <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);padding:0 2px;">
-              <span>0h</span><span>4h</span><span>8h</span><span>12h</span><span>16h</span><span>20h</span><span>23h</span>
-            </div>
-          </div>
-
-          <!-- Activity timeline -->
-          <div class="panel" style="height:auto;">
-            <div class="panel-head" style="justify-content:space-between;">
-              <span>📅 Lịch sử hoạt động (theo ngày)</span>
-            </div>
-            <div id="dash-timeline"></div>
           </div>
 
         </div>
@@ -2054,6 +2044,16 @@ async function loadAdminData() {
   renderDashboard();
 }
 
+// Chart instances
+let _chartDaily = null, _chartPie = null, _chartHourly = null;
+
+const CHART_COLORS = ['#6c63ff','#4ade80','#fbbf24','#f87171','#5eead4','#93c5fd','#f9a8d4','#a3e635'];
+
+function destroyCharts() {
+  [_chartDaily, _chartPie, _chartHourly].forEach(c => { if (c) c.destroy(); });
+  _chartDaily = _chartPie = _chartHourly = null;
+}
+
 function renderDashboard() {
   const logs = window._allAdminLogs || [];
   const days = parseInt(document.getElementById('dash-filter-days')?.value || '30');
@@ -2063,32 +2063,111 @@ function renderDashboard() {
   const today = new Date(); today.setHours(0,0,0,0);
   const weekAgo = new Date(now - 7 * 86400000);
 
-  // Filter by date
   const filtered = logs.filter(l => new Date(l.created_at) >= cutoff);
   const userFiltered = filterUser ? filtered.filter(l => l.user_email === filterUser) : filtered;
 
-  // Populate user filter dropdown
+  // Populate user dropdown
   const userSel = document.getElementById('dash-filter-user');
   if (userSel) {
     const uniqueEmails = [...new Set(logs.map(l => l.user_email))];
     const current = userSel.value;
     userSel.innerHTML = '<option value="">Tất cả nhân viên</option>' +
-      uniqueEmails.map(e => `<option value="${e}" ${e===current?'selected':''}>${e}</option>`).join('');
+      uniqueEmails.map(e => `<option value="${e}" ${e===current?'selected':''}>${e.split('@')[0]}</option>`).join('');
   }
 
-  // Stats
+  // Stat cards
   const todayLogs = userFiltered.filter(l => new Date(l.created_at) >= today);
   const uniqueUsers = [...new Set(userFiltered.map(l => l.user_email))];
   const daysRange = Math.min(days, Math.max(1, Math.ceil((now - cutoff) / 86400000)));
   const avg = uniqueUsers.length ? (userFiltered.length / uniqueUsers.length / daysRange).toFixed(1) : '0';
-
   document.getElementById('dash-total').textContent = userFiltered.length;
   document.getElementById('dash-today').textContent = todayLogs.length;
   document.getElementById('dash-users').textContent = uniqueUsers.length;
   document.getElementById('dash-avg').textContent = avg;
   document.getElementById('dash-last-updated').textContent = 'Cập nhật: ' + new Date().toLocaleTimeString('vi-VN');
 
-  // Per-user table
+  // Build daily data (last N days)
+  const numDays = Math.min(days === 9999 ? 60 : days, 60);
+  const dailyLabels = [], dailyDatasets = {};
+  const allUsers = [...new Set(userFiltered.map(l => l.user_email))];
+  for (let i = numDays - 1; i >= 0; i--) {
+    const d = new Date(now - i * 86400000);
+    const key = d.toLocaleDateString('vi-VN', {day:'2-digit', month:'2-digit'});
+    dailyLabels.push(key);
+    allUsers.forEach(u => {
+      if (!dailyDatasets[u]) dailyDatasets[u] = new Array(numDays).fill(0);
+      const idx = numDays - 1 - i;
+      const count = userFiltered.filter(l => {
+        const ld = new Date(l.created_at);
+        return l.user_email === u &&
+          ld.getDate() === d.getDate() &&
+          ld.getMonth() === d.getMonth() &&
+          ld.getFullYear() === d.getFullYear();
+      }).length;
+      dailyDatasets[u][idx] = count;
+    });
+  }
+
+  destroyCharts();
+  const chartDefaults = {
+    plugins: { legend: { labels: { color: '#7c7c8e', font: { size: 11 } } } },
+    scales: {
+      x: { ticks: { color: '#7c7c8e', font: { size: 10 } }, grid: { color: '#2e2e36' } },
+      y: { ticks: { color: '#7c7c8e', font: { size: 10 }, stepSize: 1 }, grid: { color: '#2e2e36' }, beginAtZero: true }
+    }
+  };
+
+  // Daily line chart
+  const ctxDaily = document.getElementById('chart-daily').getContext('2d');
+  _chartDaily = new Chart(ctxDaily, {
+    type: 'line',
+    data: {
+      labels: dailyLabels,
+      datasets: allUsers.map((u, i) => ({
+        label: u.split('@')[0],
+        data: dailyDatasets[u],
+        borderColor: CHART_COLORS[i % CHART_COLORS.length],
+        backgroundColor: CHART_COLORS[i % CHART_COLORS.length] + '22',
+        tension: 0.3, fill: true, pointRadius: 3,
+      }))
+    },
+    options: { ...chartDefaults, responsive: true, interaction: { mode: 'index' } }
+  });
+
+  // Pie chart per user
+  const userTotals = allUsers.map(u => userFiltered.filter(l => l.user_email === u).length);
+  const ctxPie = document.getElementById('chart-user-pie').getContext('2d');
+  _chartPie = new Chart(ctxPie, {
+    type: 'doughnut',
+    data: {
+      labels: allUsers.map(u => u.split('@')[0]),
+      datasets: [{ data: userTotals, backgroundColor: CHART_COLORS, borderWidth: 2, borderColor: '#18181b' }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'bottom', labels: { color: '#7c7c8e', font: { size: 11 }, padding: 10 } } }
+    }
+  });
+
+  // Hourly bar chart
+  const hourCounts = new Array(24).fill(0);
+  userFiltered.forEach(l => { hourCounts[new Date(l.created_at).getHours()]++; });
+  const ctxHour = document.getElementById('chart-hourly').getContext('2d');
+  _chartHourly = new Chart(ctxHour, {
+    type: 'bar',
+    data: {
+      labels: Array.from({length:24}, (_,h) => h+'h'),
+      datasets: [{
+        label: 'Số email',
+        data: hourCounts,
+        backgroundColor: hourCounts.map((_, h) => new Date().getHours() === h ? '#4ade80' : '#6c63ff88'),
+        borderRadius: 4,
+      }]
+    },
+    options: { ...chartDefaults, responsive: true, plugins: { legend: { display: false } } }
+  });
+
+  // User table
   const userStats = {};
   userFiltered.forEach(l => {
     const e = l.user_email;
@@ -2098,64 +2177,35 @@ function renderDashboard() {
     if (new Date(l.created_at) >= weekAgo) userStats[e].week++;
     if (!userStats[e].last || new Date(l.created_at) > new Date(userStats[e].last)) userStats[e].last = l.created_at;
   });
-
-  const tbody = document.getElementById('dash-user-tbody');
+  const grandTotal = userFiltered.length || 1;
   const sortedUsers = Object.entries(userStats).sort((a,b) => b[1].total - a[1].total);
-  tbody.innerHTML = sortedUsers.map(([email, s]) => {
+  document.getElementById('dash-user-tbody').innerHTML = sortedUsers.map(([email, s], i) => {
     const isAdmin = email === CONFIG.ADMIN_EMAIL;
-    const lastStr = s.last ? new Date(s.last).toLocaleString('vi-VN') : '—';
-    const actPct = Math.round(s.total / Math.max(...Object.values(userStats).map(x=>x.total)) * 100);
+    const pct = Math.round(s.total / grandTotal * 100);
     return `<tr>
       <td>
-        <div style="font-size:13px;">${email}</div>
-        <span class="tag ${isAdmin?'tag-amber':'tag-blue'}" style="font-size:10px;">${isAdmin?'admin':'staff'}</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:10px;height:10px;border-radius:50%;background:${CHART_COLORS[i%CHART_COLORS.length]};flex-shrink:0;"></div>
+          <div>
+            <div style="font-size:12px;font-weight:500;">${email.split('@')[0]}</div>
+            <div style="font-size:11px;color:var(--muted);">${email}</div>
+          </div>
+        </div>
       </td>
-      <td style="font-family:var(--mono);font-weight:500;">${s.total}</td>
-      <td style="font-family:var(--mono);">${s.today || '—'}</td>
+      <td><span style="font-family:var(--mono);font-size:14px;font-weight:600;">${s.total}</span></td>
+      <td style="font-family:var(--mono);">${s.today || <span style="color:var(--muted)">0</span>}</td>
       <td style="font-family:var(--mono);">${s.week}</td>
-      <td style="font-size:12px;color:var(--muted);">${lastStr}</td>
+      <td style="font-size:12px;color:var(--muted);">${s.last ? new Date(s.last).toLocaleString('vi-VN') : '—'}</td>
       <td>
-        <div style="background:var(--bg3);border-radius:4px;height:6px;width:100%;min-width:60px;">
-          <div style="background:var(--accent);height:6px;border-radius:4px;width:${actPct}%;"></div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div style="flex:1;background:var(--bg3);border-radius:4px;height:6px;min-width:50px;">
+            <div style="background:${CHART_COLORS[i%CHART_COLORS.length]};height:6px;border-radius:4px;width:${pct}%;"></div>
+          </div>
+          <span style="font-size:11px;color:var(--muted);width:32px;">${pct}%</span>
         </div>
       </td>
     </tr>`;
   }).join('') || '<tr><td colspan="6" style="color:var(--muted);">Chưa có dữ liệu.</td></tr>';
-
-  // Hourly chart
-  const hourCounts = new Array(24).fill(0);
-  userFiltered.forEach(l => {
-    const h = new Date(l.created_at).getHours();
-    hourCounts[h]++;
-  });
-  const maxHour = Math.max(...hourCounts, 1);
-  const chartEl = document.getElementById('dash-hour-chart');
-  chartEl.innerHTML = hourCounts.map((c, h) => {
-    const pct = Math.round(c / maxHour * 100);
-    const isNow = new Date().getHours() === h;
-    return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;" title="${h}h: ${c} email">
-      <div style="font-size:9px;color:var(--muted);">${c||''}</div>
-      <div style="width:100%;background:${isNow?'var(--accent2)':'var(--accent)'};opacity:${c?0.4+0.6*pct/100:0.1};border-radius:2px 2px 0 0;height:${Math.max(2,pct)}%;min-height:2px;"></div>
-    </div>`;
-  }).join('');
-
-  // Timeline by day
-  const dayCounts = {};
-  userFiltered.forEach(l => {
-    const d = new Date(l.created_at).toLocaleDateString('vi-VN');
-    dayCounts[d] = (dayCounts[d]||0) + 1;
-  });
-  const sortedDays = Object.entries(dayCounts).sort((a,b) => new Date(b[0].split('/').reverse().join('-')) - new Date(a[0].split('/').reverse().join('-'))).slice(0,14);
-  const maxDay = Math.max(...sortedDays.map(([,v])=>v), 1);
-  document.getElementById('dash-timeline').innerHTML = sortedDays.map(([d,c]) =>
-    `<div style="display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:0.5px solid var(--border);">
-      <div style="font-size:12px;color:var(--muted);width:80px;flex-shrink:0;">${d}</div>
-      <div style="flex:1;background:var(--bg3);border-radius:4px;height:8px;">
-        <div style="background:var(--accent);height:8px;border-radius:4px;width:${Math.round(c/maxDay*100)}%;"></div>
-      </div>
-      <div style="font-size:12px;font-family:var(--mono);width:30px;text-align:right;">${c}</div>
-    </div>`
-  ).join('') || '<div style="color:var(--muted);font-size:13px;padding:10px 0;">Chưa có dữ liệu trong khoảng thời gian này.</div>';
 }
 
 // ── STORE MODAL ───────────────────────────────────────
