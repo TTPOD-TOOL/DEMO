@@ -706,8 +706,8 @@ const CONFIG = {
           </div>
           <div class="panel" style="height:auto;">
             <table class="data-table">
-              <thead><tr><th>Email</th><th>Vai trò</th><th>Email đã xử lý</th></tr></thead>
-              <tbody id="staff-table-body"><tr><td colspan="3" style="color:var(--muted)">Đang tải...</td></tr></tbody>
+              <thead><tr><th>Email</th><th>Vai trò</th><th>Ngày tạo</th><th>Đăng nhập lần cuối</th><th>Email đã xử lý</th><th>Hành động</th></tr></thead>
+              <tbody id="staff-table-body"><tr><td colspan="6" style="color:var(--muted)">Đang tải...</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -2025,23 +2025,46 @@ async function loadAdminData() {
   : '<tr><td colspan="5" style="color:var(--muted)">Chưa có cửa hàng nào. Thêm cửa hàng đầu tiên!</td></tr>';
 
   // Staff + logs
-  const {data:logs} = await sb.from('email_logs').select('*').order('created_at',{ascending:false}).limit(50);
-  const today = new Date(); today.setHours(0,0,0,0);
-  const todayLogs = (logs||[]).filter(l=>new Date(l.created_at)>=today);
-  const uniqueUsers = [...new Set((logs||[]).map(l=>l.user_email))];
-  const counts = {};
-  (logs||[]).forEach(l=>{counts[l.user_email]=(counts[l.user_email]||0)+1;});
+  // Fetch all users from view + email logs in parallel
+  const [{data:users}, {data:logs}] = await Promise.all([
+    sb.from('user_list').select('*').order('created_at', {ascending:false}),
+    sb.from('email_logs').select('*').order('created_at',{ascending:false}).limit(200)
+  ]);
 
-  document.getElementById('staff-table-body').innerHTML = uniqueUsers.map(email=>`
-    <tr>
-      <td>${email}</td>
-      <td><span class="tag ${email===CONFIG.ADMIN_EMAIL?'tag-amber':'tag-blue'}">${email===CONFIG.ADMIN_EMAIL?'admin':'staff'}</span></td>
-      <td style="font-family:var(--mono)">${counts[email]||0}</td>
-    </tr>`).join('') || '<tr><td colspan="3" style="color:var(--muted)">Chưa có hoạt động.</td></tr>';
+  // Count emails per user
+  const counts = {};
+  (logs||[]).forEach(l => { counts[l.user_email] = (counts[l.user_email]||0)+1; });
+
+  // Render staff table from user_list
+  const tbody = document.getElementById('staff-table-body');
+  tbody.innerHTML = (users||[]).map(u => {
+    const isAdmin = u.email === CONFIG.ADMIN_EMAIL;
+    const createdAt = u.created_at ? new Date(u.created_at).toLocaleDateString('vi-VN') : '—';
+    const lastLogin = u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleString('vi-VN') : 'Chưa đăng nhập';
+    const emailCount = counts[u.email] || 0;
+    return `<tr>
+      <td>
+        <div style="font-size:13px;font-weight:500;">${u.email}</div>
+      </td>
+      <td><span class="tag ${isAdmin?'tag-amber':'tag-blue'}">${isAdmin?'admin':'staff'}</span></td>
+      <td style="font-size:12px;color:var(--muted);">${createdAt}</td>
+      <td style="font-size:12px;color:var(--muted);">${lastLogin}</td>
+      <td><span style="font-family:var(--mono);font-weight:500;">${emailCount}</span></td>
+      <td>
+        ${!isAdmin ? `<button class="btn sm danger" onclick="disableUser('${u.id}','${u.email}')">🔇 Disable</button>` : '<span style="font-size:11px;color:var(--muted);">—</span>'}
+      </td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="6" style="color:var(--muted);">Chưa có nhân viên nào.</td></tr>';
 
   // Store logs for dashboard
   window._allAdminLogs = logs || [];
   renderDashboard();
+}
+
+async function disableUser(userId, email) {
+  if (!confirm(`Disable tài khoản ${email}?\nNhân viên sẽ không thể đăng nhập cho đến khi được kích hoạt lại trong Supabase.`)) return;
+  // Cannot disable via client SDK — redirect admin to Supabase
+  alert(`Để disable tài khoản ${email}:\n\n1. Vào https://supabase.com → Authentication → Users\n2. Tìm ${email}\n3. Nhấn "..." → Ban user`);
 }
 
 // Chart instances
@@ -2257,10 +2280,20 @@ async function addUser() {
   const pass = document.getElementById('new-user-pass').value;
   const err = document.getElementById('user-modal-err');
   err.classList.add('hidden');
-  if (!email||pass.length<6) { err.textContent='Email và mật khẩu tối thiểu 6 ký tự.'; err.classList.remove('hidden'); return; }
-  const {error} = await sb.auth.signUp({email,password:pass});
-  if (error) { err.textContent=error.message; err.classList.remove('hidden'); return; }
+  if (!email || pass.length < 6) {
+    err.textContent = 'Email và mật khẩu tối thiểu 6 ký tự.';
+    err.classList.remove('hidden'); return;
+  }
+  // signUp with emailRedirectTo suppressed — works when email confirm is OFF in Supabase
+  const {data, error} = await sb.auth.signUp({
+    email, password: pass,
+    options: { emailRedirectTo: null, data: { role: 'staff' } }
+  });
+  if (error) { err.textContent = error.message; err.classList.remove('hidden'); return; }
   closeUserModal();
+  document.getElementById('new-user-email').value = '';
+  document.getElementById('new-user-pass').value = '';
+  await loadAdminData(); // Refresh staff list
   alert(`✓ Đã tạo tài khoản cho ${email}!\nNhân viên có thể đăng nhập ngay.`);
 }
 </script>
