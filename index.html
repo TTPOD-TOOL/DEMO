@@ -1168,9 +1168,15 @@ function selectOrder(trackVal, rowJsonStr) {
     agentState.orderInfo = Object.entries(row).filter(([k,v]) => v).map(([k,v]) => `${k}: ${v}`).join('\n');
     document.getElementById('tracking-result').value = '';
 
+    // Make sure email area is visible so tracking section shows
+    const emailArea = document.getElementById('email-input-area');
+    if (emailArea) emailArea.style.display = 'flex';
+
     if (trackVal) {
       document.getElementById('tracking-number').value = trackVal;
       updateTrackingLink();
+      // Scroll tracking into view
+      document.getElementById('tracking-number')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
     // Update result display to show selected
