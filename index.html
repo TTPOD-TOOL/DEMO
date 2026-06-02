@@ -1297,15 +1297,23 @@ async function loadInbox() {
     if (!emails.length) {
       document.getElementById('inbox-list').innerHTML = '<div style="color:var(--muted);font-size:13px;padding:10px 0;">Inbox trống!</div>';
     } else {
+      const unreadCount = emails.filter(e => !e.seen).length;
+      if (unreadCount > 0) {
+        status.innerHTML = `<div class="dot" style="color:var(--accent2)"></div> ${emails.length} email · <strong style="color:var(--accent2)">${unreadCount} chưa đọc</strong>`;
+      }
       document.getElementById('inbox-list').innerHTML = emails.map((e, i) => {
         const from = e.from?.replace(/<.*>/, '').trim() || e.from || 'Unknown';
         const date = new Date(e.date).toLocaleString('vi-VN', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-        return `<div class="inbox-card" onclick="openInboxEmail(${i})" id="inbox-card-${i}" data-idx="${i}">
+        const unread = !e.seen;
+        return `<div class="inbox-card ${unread ? 'unread' : ''}" onclick="openInboxEmail(${i})" id="inbox-card-${i}" data-idx="${i}"
+          style="border-left:3px solid ${unread ? 'var(--accent)' : 'transparent'};">
           <div class="inbox-meta">
-            <div class="inbox-from">${from}</div>
+            <div class="inbox-from" style="font-weight:${unread ? '600' : '400'};color:${unread ? 'var(--text)' : 'var(--muted)'};">
+              ${unread ? '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-right:5px;vertical-align:middle;"></span>' : ''}${from}
+            </div>
             <div class="inbox-time">${date}</div>
           </div>
-          <div class="inbox-subj">${e.subject || '(no subject)'}</div>
+          <div class="inbox-subj" style="font-weight:${unread ? '500' : '400'};color:${unread ? 'var(--text)' : 'var(--muted)'};">${e.subject || '(no subject)'}</div>
           <div class="inbox-snippet">${e.snippet || ''}</div>
         </div>`;
       }).join('');
@@ -1327,7 +1335,26 @@ function openInboxEmail(idx) {
 
   // Highlight selected card
   document.querySelectorAll('.inbox-card').forEach(c => c.classList.remove('active'));
-  document.getElementById('inbox-card-' + idx)?.classList.add('active');
+  const card = document.getElementById('inbox-card-' + idx);
+  card?.classList.add('active');
+
+  // Mark as seen visually
+  if (!email.seen) {
+    email.seen = true;
+    if (card) {
+      card.style.borderLeft = '3px solid transparent';
+      card.querySelector('.inbox-from').style.fontWeight = '400';
+      card.querySelector('.inbox-from').style.color = 'var(--muted)';
+      card.querySelector('.inbox-subj').style.fontWeight = '400';
+      card.querySelector('.inbox-subj').style.color = 'var(--muted)';
+      const dot = card.querySelector('span[style*="border-radius:50%"]');
+      if (dot) dot.remove();
+    }
+    // Mark seen on server (fire and forget)
+    if (inboxStore) {
+      callEmailServer('POST', '/mark-seen/' + inboxStore.id + '/' + email.uid).catch(() => {});
+    }
+  }
 
   // Show inline detail panel
   const detail = document.getElementById('inbox-detail-panel');
