@@ -164,6 +164,8 @@ const CONFIG = {
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFnb3JtaGJxeHdrYm9qanhzc2F5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwODE3MjUsImV4cCI6MjA5NTY1NzcyNX0.IkFtUMCnpYvHFuPEIEUS7Dy0ELFnA6V4ail76ZpDu7U',
   WORKER_URL: 'https://solitary-surf-52e3.trinhdxbk56.workers.dev',
   ADMIN_EMAIL: 'trinhdxbk56@yahoo.com',
+  EMAIL_SERVER: 'https://pod-email-server-production.up.railway.app',
+  EMAIL_SECRET: 'Alhkvcnl271193A@Alhkvcnl271193A@Alhkvcnl271193A@',
 };
 </script>
 
@@ -300,11 +302,16 @@ const CONFIG = {
                   <div style="display:flex;flex-direction:column;gap:6px;">
                     <label style="display:flex;align-items:center;gap:6px;">✉ Email gốc <span style="font-size:11px;color:var(--muted);">(copy gửi khách)</span></label>
                     <div class="draft-box" id="outbound-draft-original" style="min-height:200px;"></div>
-                    <button class="copy-btn" onclick="copyOutboundDraft()">⎘ Copy email gốc</button>
+                    <button class="copy-btn" onclick="copyOutboundDraft()" style="flex:1;">⎘ Copy</button>
+                <button id="outbound-send-btn" onclick="sendOutboundEmail()"
+                  style="flex:2;padding:8px;border-radius:var(--radius);background:var(--accent2);border:none;color:#172f17;font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;">
+                  📤 Gửi email trực tiếp
+                </button>
                   </div>
                   <div style="display:flex;flex-direction:column;gap:6px;">
                     <label>🇻🇳 Bản dịch tiếng Việt</label>
                     <div class="draft-box" id="outbound-draft-vietnamese" style="min-height:200px;color:var(--muted);"></div>
+                  <div id="outbound-send-status" style="font-size:12px;display:none;padding:6px 10px;border-radius:var(--radius);margin-top:4px;"></div>
                   </div>
                 </div>
                 <button class="btn" style="font-size:12px;width:100%;" onclick="resetOutbound()">↺ Viết email khác</button>
@@ -438,14 +445,21 @@ const CONFIG = {
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
             <div style="display:flex;flex-direction:column;gap:6px;">
               <label style="display:flex;align-items:center;gap:6px;">
-                ✉ Email gốc <span style="font-size:11px;color:var(--muted);">(ngôn ngữ khách — để copy gửi)</span>
+                ✉ Email gốc <span style="font-size:11px;color:var(--muted);">(ngôn ngữ khách)</span>
               </label>
               <div class="draft-box" id="draft-original" style="min-height:180px;"></div>
-              <button class="copy-btn" onclick="copyDraft()" id="copy-btn">⎘ Copy email gốc</button>
+              <div style="display:flex;gap:6px;">
+                <button class="copy-btn" onclick="copyDraft()" id="copy-btn" style="flex:1;">⎘ Copy</button>
+                <button id="send-btn" onclick="sendReplyEmail()"
+                  style="flex:2;padding:8px;border-radius:var(--radius);background:var(--accent2);border:none;color:#172f17;font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;">
+                  📤 Gửi email trực tiếp
+                </button>
+              </div>
+              <div id="send-status" style="font-size:12px;display:none;padding:6px 10px;border-radius:var(--radius);"></div>
             </div>
             <div style="display:flex;flex-direction:column;gap:6px;">
               <label style="display:flex;align-items:center;gap:6px;">
-                🇻🇳 Bản dịch tiếng Việt <span style="font-size:11px;color:var(--muted);">(để xác nhận nội dung)</span>
+                🇻🇳 Bản dịch tiếng Việt <span style="font-size:11px;color:var(--muted);">(để xác nhận)</span>
               </label>
               <div class="draft-box" id="draft-vietnamese" style="min-height:180px;color:var(--muted);"></div>
             </div>
@@ -2031,6 +2045,130 @@ async function deleteScenario(id, title) {
   if (!confirm(`Xoá kịch bản "${title}"?`)) return;
   await sb.from('scenarios').delete().eq('id', id);
   await loadScenarios();
+}
+
+// ── EMAIL SERVER (IMAP/SMTP) ──────────────────────────
+async function callEmailServer(method, path, body = null) {
+  const opts = {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-secret': CONFIG.EMAIL_SECRET,
+    },
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(CONFIG.EMAIL_SERVER + path, opts);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Server error');
+  return data;
+}
+
+async function sendReplyEmail() {
+  if (!currentDraft) { alert('Chưa có draft email!'); return; }
+  if (!selectedStore) { alert('Chưa chọn store!'); return; }
+
+  // Extract customer email from thread
+  const emailText = document.getElementById('customer-email').value;
+  const emailRegex = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+  const allEmails = [...new Set(emailText.match(emailRegex) || [])];
+  const storeEmail = selectedStore.email?.toLowerCase() || '';
+  const customerEmails = allEmails.filter(e => {
+    const el = e.toLowerCase();
+    return el !== storeEmail && !el.includes('noreply') && !el.includes('no-reply') && !el.includes('donotreply');
+  });
+
+  if (!customerEmails.length) {
+    alert('Không tìm thấy email khách trong chuỗi email!');
+    return;
+  }
+
+  const customerEmail = customerEmails[0];
+  const btn = document.getElementById('send-btn');
+  const statusEl = document.getElementById('send-status');
+  btn.disabled = true;
+  btn.textContent = '⏳ Đang gửi...';
+  statusEl.style.display = 'none';
+
+  try {
+    // Extract subject from draft (first line or use default)
+    const draftLines = currentDraft.split('\n').map(l => l.trim()).filter(Boolean);
+    const subjectLine = draftLines.find(l => l.toLowerCase().startsWith('subject:'));
+    let subject = subjectLine ? subjectLine.replace(/^subject:\s*/i, '') : 'Re: Your Order';
+
+    // Get thread info from agentState if available
+    const inReplyTo = agentState?.threadMessageId || '';
+    const references = agentState?.threadReferences || '';
+
+    const result = await callEmailServer('POST', `/send/${selectedStore.id}`, {
+      to: customerEmail,
+      subject,
+      text: currentDraft,
+      inReplyTo,
+      references,
+    });
+
+    statusEl.style.display = 'block';
+    statusEl.style.background = '#1a3a24';
+    statusEl.style.color = '#86efac';
+    statusEl.textContent = `✓ Đã gửi thành công đến ${customerEmail}!`;
+    btn.textContent = '✓ Đã gửi!';
+
+    // Log to DB
+    if (sb && currentUser && agentState?.logId) {
+      await sb.from('email_logs').update({
+        draft: currentDraft,
+        sent: true,
+        sent_to: customerEmail,
+        sent_at: new Date().toISOString(),
+      }).eq('id', agentState.logId);
+    }
+
+  } catch(e) {
+    statusEl.style.display = 'block';
+    statusEl.style.background = '#3a1a1a';
+    statusEl.style.color = '#fca5a5';
+    statusEl.textContent = '⚠️ Lỗi: ' + e.message;
+    btn.disabled = false;
+    btn.textContent = '📤 Gửi email trực tiếp';
+    console.error(e);
+  }
+}
+
+// Also add send button for outbound emails
+async function sendOutboundEmail() {
+  if (!currentOutboundDraft) { alert('Chưa có draft email!'); return; }
+  if (!outboundStore) { alert('Chưa chọn store!'); return; }
+
+  const customerEmail = document.getElementById('outbound-customer-email').value.trim();
+  if (!customerEmail) { alert('Chưa có email khách!'); return; }
+
+  const btn = document.getElementById('outbound-send-btn');
+  if (btn) btn.disabled = true;
+
+  try {
+    const draftLines = currentOutboundDraft.split('\n').map(l => l.trim()).filter(Boolean);
+    const subjectLine = draftLines.find(l => l.toLowerCase().startsWith('subject:'));
+    let subject = subjectLine ? subjectLine.replace(/^subject:\s*/i, '') : 'Message from ' + outboundStore.name;
+
+    await callEmailServer('POST', `/send/${outboundStore.id}`, {
+      to: customerEmail,
+      subject,
+      text: currentOutboundDraft,
+      replyToName: document.getElementById('outbound-customer-name').value.trim(),
+    });
+
+    const statusEl = document.getElementById('outbound-send-status');
+    if (statusEl) {
+      statusEl.style.display = 'block';
+      statusEl.style.background = '#1a3a24';
+      statusEl.style.color = '#86efac';
+      statusEl.textContent = `✓ Đã gửi thành công đến ${customerEmail}!`;
+    }
+    if (btn) btn.textContent = '✓ Đã gửi!';
+  } catch(e) {
+    alert('Lỗi gửi email: ' + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = '📤 Gửi email'; }
+  }
 }
 
 // ── HISTORY ──────────────────────────────────────────
