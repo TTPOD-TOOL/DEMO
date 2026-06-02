@@ -394,8 +394,11 @@ const CONFIG = {
               </div>
             </div>
 
-            <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
-              <label>Toàn bộ chuỗi email (copy từ đầu đến cuối)</label>
+            <div id="email-input-area" style="flex:1;display:flex;flex-direction:column;gap:6px;">
+              <label style="display:flex;align-items:center;justify-content:space-between;">
+                <span>Toàn bộ chuỗi email</span>
+                <span id="email-source-badge" style="font-size:11px;color:var(--accent2);display:none;">✓ Lấy từ inbox</span>
+              </label>
               <textarea class="email-input" id="customer-email" placeholder="Dán toàn bộ chuỗi email vào đây, bao gồm cả các email cũ...&#10;&#10;VD:&#10;--- Email 1 (3 ngày trước) ---&#10;Customer: Hi, I ordered #1234 but haven't received it...&#10;&#10;--- Email 2 (2 ngày trước) ---&#10;Store: Hi! We are checking on your order...&#10;&#10;--- Email 3 (hôm nay) ---&#10;Customer: Still no update, I want a refund!" onblur="autoLookupFromEmail()" onpaste="setTimeout(autoLookupFromEmail, 100)"></textarea>
             </div>
             <!-- EXCEL LOOKUP + TRACKING SECTION -->
@@ -982,11 +985,18 @@ function onStoreChange() {
       inboxStore = selectedStore;
       // Auto-load inbox
       loadInbox();
+      // Collapse email input area until user processes an email
+      const emailArea = document.getElementById('email-input-area');
+      if (emailArea && !document.getElementById('customer-email').value.trim()) {
+        emailArea.style.display = 'none';
+      }
     }
   } else {
     preview.classList.add('hidden');
     if (inlineInbox) inlineInbox.style.display = 'none';
     document.getElementById('inbox-detail-panel').style.display = 'none';
+    const emailArea = document.getElementById('email-input-area');
+    if (emailArea) emailArea.style.display = 'flex';
   }
 }
 
@@ -1462,6 +1472,8 @@ function processInboxEmail() {
 
   // Fill vào email agent — không cần copy paste nữa
   document.getElementById('customer-email').value = threadText;
+  const badge = document.getElementById('email-source-badge');
+  if (badge) badge.style.display = 'inline';
 
   // Sync store
   if (inboxStore) {
@@ -1481,9 +1493,12 @@ function processInboxEmail() {
   // Auto lookup order from Excel
   setTimeout(() => autoLookupFromEmail(), 100);
 
-  // Scroll to email textarea
-  document.getElementById('customer-email').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  // Show email input area
+  const emailArea = document.getElementById('email-input-area');
+  if (emailArea) emailArea.style.display = 'flex';
   closeInboxDetail();
+  // Scroll down to analyze button
+  document.getElementById('analyze-btn')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 // ── OUTBOUND EMAIL ───────────────────────────────────
@@ -2041,6 +2056,8 @@ function copyDraft() {
 
 function resetAgent() {
   document.getElementById('customer-email').value = '';
+  const badge = document.getElementById('email-source-badge');
+  if (badge) badge.style.display = 'none';
   document.getElementById('tracking-number').value = '';
   document.getElementById('tracking-result').value = '';
   document.getElementById('tracking-link-row').classList.add('hidden');
