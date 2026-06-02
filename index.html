@@ -380,10 +380,13 @@ const CONFIG = {
                 </div>
                 <button onclick="closeInboxDetail()" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:16px;flex-shrink:0;">✕</button>
               </div>
-              <div id="inbox-body" style="font-size:12px;line-height:1.6;white-space:pre-wrap;max-height:150px;overflow-y:auto;color:var(--muted);"></div>
+              <!-- AI Summary -->
+              <div id="inbox-ai-summary" style="display:none;"></div>
+              <!-- Raw body (collapsible) -->
+              <div id="inbox-body" style="font-size:11px;line-height:1.6;white-space:pre-wrap;max-height:100px;overflow-y:auto;color:var(--muted);"></div>
               <div style="display:flex;gap:6px;">
                 <button class="btn sm" onclick="loadThread()" style="font-size:11px;">🔗 Xem thread</button>
-                <button onclick="processInboxEmail()" style="flex:1;padding:6px;border-radius:var(--radius);background:var(--accent);border:none;color:#fff;font-size:12px;font-weight:500;cursor:pointer;">✦ Xử lý email này</button>
+                <button onclick="processInboxEmail()" style="flex:1;padding:7px;border-radius:var(--radius);background:var(--accent);border:none;color:#fff;font-size:12px;font-weight:500;cursor:pointer;">✦ Xử lý ngay</button>
               </div>
               <div id="inbox-thread" style="display:none;flex-direction:column;gap:4px;border-top:1px solid var(--border);padding-top:8px;">
                 <div style="font-size:11px;font-weight:500;color:var(--muted);">📨 Thread</div>
@@ -1327,34 +1330,16 @@ async function loadInbox() {
   btn.disabled = false; btn.textContent = '⟳ Tải inbox';
 }
 
-function openInboxEmail(idx) {
+async function openInboxEmail(idx) {
   const emails = window._inboxEmails || [];
   const email = emails[idx];
   if (!email) return;
   selectedInboxEmail = email;
 
-  // Highlight selected card
+  // Highlight selected card — NOT marking seen yet
   document.querySelectorAll('.inbox-card').forEach(c => c.classList.remove('active'));
   const card = document.getElementById('inbox-card-' + idx);
   card?.classList.add('active');
-
-  // Mark as seen visually
-  if (!email.seen) {
-    email.seen = true;
-    if (card) {
-      card.style.borderLeft = '3px solid transparent';
-      card.querySelector('.inbox-from').style.fontWeight = '400';
-      card.querySelector('.inbox-from').style.color = 'var(--muted)';
-      card.querySelector('.inbox-subj').style.fontWeight = '400';
-      card.querySelector('.inbox-subj').style.color = 'var(--muted)';
-      const dot = card.querySelector('span[style*="border-radius:50%"]');
-      if (dot) dot.remove();
-    }
-    // Mark seen on server (fire and forget)
-    if (inboxStore) {
-      callEmailServer('POST', '/mark-seen/' + inboxStore.id + '/' + email.uid).catch(() => {});
-    }
-  }
 
   // Show inline detail panel
   const detail = document.getElementById('inbox-detail-panel');
@@ -1365,12 +1350,40 @@ function openInboxEmail(idx) {
   document.getElementById('inbox-subject').textContent = email.subject || '(no subject)';
   document.getElementById('inbox-from').textContent = email.from?.replace(/<.*>/, '').trim() || email.from || '';
   document.getElementById('inbox-date').textContent = new Date(email.date).toLocaleString('vi-VN',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-  document.getElementById('inbox-body').textContent = (email.text || '').slice(0, 500) + ((email.text||'').length > 500 ? '...' : '');
+  document.getElementById('inbox-body').textContent = (email.text || '').slice(0, 400) + ((email.text||'').length > 400 ? '...' : '');
+
+  // AI quick summary
+  const summaryEl = document.getElementById('inbox-ai-summary');
+  if (summaryEl) {
+    summaryEl.style.display = 'block';
+    summaryEl.innerHTML = '<span style="color:var(--muted);font-size:11px;">⏳ Đang tóm tắt...</span>';
+    try {
+      const emailText = email.text || '';
+      const res = await fetch(CONFIG.WORKER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-5',
+          max_tokens: 200,
+          system: 'Tóm tắt email của khách bằng tiếng Việt trong 2 dòng: (1) Vấn đề/yêu cầu chính, (2) Mức độ cấp thiết. Ngắn gọn, súc tích. Trả về plain text.',
+          messages: [{ role: 'user', content: `Subject: ${email.subject}\nFrom: ${email.from}\n\n${emailText.slice(0, 800)}` }]
+        })
+      });
+      const data = await res.json();
+      const summary = data.content?.[0]?.text || '';
+      summaryEl.innerHTML = `<div style="font-size:12px;line-height:1.6;color:var(--text);padding:8px 10px;background:var(--bg3);border-radius:6px;border-left:3px solid var(--accent2);">${summary.replace(/\n/g,'<br>')}</div>`;
+    } catch(e) {
+      summaryEl.innerHTML = '';
+    }
+  }
 }
 
 function closeInboxDetail() {
   document.getElementById('inbox-detail-panel').style.display = 'none';
+  document.getElementById('inbox-ai-summary').style.display = 'none';
+  document.getElementById('inbox-ai-summary').innerHTML = '';
   document.querySelectorAll('.inbox-card').forEach(c => c.classList.remove('active'));
+  // NOT marking seen — email stays bold until staff processes it
 }
 
 async function loadThread() {
@@ -1405,7 +1418,27 @@ async function loadThread() {
 function processInboxEmail() {
   if (!selectedInboxEmail) return;
 
-  // Build thread text for agent
+  // Mark as seen NOW (nhân viên đã quyết định xử lý)
+  const emails = window._inboxEmails || [];
+  const emailIdx = emails.findIndex(e => e.uid === selectedInboxEmail.uid);
+  if (emailIdx >= 0 && !emails[emailIdx].seen) {
+    emails[emailIdx].seen = true;
+    const card = document.getElementById('inbox-card-' + emailIdx);
+    if (card) {
+      card.style.borderLeft = '3px solid transparent';
+      const fromEl = card.querySelector('.inbox-from');
+      const subjEl = card.querySelector('.inbox-subj');
+      if (fromEl) { fromEl.style.fontWeight = '400'; fromEl.style.color = 'var(--muted)'; }
+      if (subjEl) { subjEl.style.fontWeight = '400'; subjEl.style.color = 'var(--muted)'; }
+      const dot = card.querySelector('span[style*="border-radius:50%"]');
+      if (dot) dot.remove();
+    }
+    if (inboxStore) {
+      callEmailServer('POST', '/mark-seen/' + inboxStore.id + '/' + selectedInboxEmail.uid).catch(() => {});
+    }
+  }
+
+  // Build thread text — dùng thread nếu đã load, không thì dùng email hiện tại
   let threadText = '';
   const thread = window._currentThread;
   if (thread && thread.length > 1) {
@@ -1416,28 +1449,41 @@ function processInboxEmail() {
     }).join('\n\n');
   } else {
     const from = selectedInboxEmail.from?.replace(/<.*>/, '').trim() || 'Unknown';
-    threadText = `From: ${from}\nDate: ${new Date(selectedInboxEmail.date).toLocaleDateString('vi-VN')}\n\n${selectedInboxEmail.text || ''}`;
+    const date = new Date(selectedInboxEmail.date).toLocaleDateString('vi-VN');
+    threadText = `--- Email (${date}) ---\nFrom: ${from}\nSubject: ${selectedInboxEmail.subject || ''}\n\n${selectedInboxEmail.text || ''}`;
   }
 
-  // Store thread messageId for reply threading
+  // Store thread info for reply threading
   agentState = agentState || {};
   agentState.threadMessageId = selectedInboxEmail.messageId || '';
-  agentState.threadReferences = selectedInboxEmail.references?.join(' ') || '';
+  agentState.threadReferences = Array.isArray(selectedInboxEmail.references)
+    ? selectedInboxEmail.references.join(' ')
+    : (selectedInboxEmail.references || '');
 
-  // Switch to email agent and fill
-  const storeId = inboxStore?.id;
-  if (storeId) {
-    document.getElementById('store-select').value = storeId;
-    onStoreChange();
-  }
+  // Fill vào email agent — không cần copy paste nữa
   document.getElementById('customer-email').value = threadText;
 
-  // Auto lookup order
+  // Sync store
+  if (inboxStore) {
+    document.getElementById('store-select').value = inboxStore.id;
+    // Update selectedStore without triggering inbox reload
+    selectedStore = inboxStore;
+    const preview = document.getElementById('store-preview');
+    if (preview) {
+      preview.classList.remove('hidden');
+      document.getElementById('preview-logo').textContent = inboxStore.name[0].toUpperCase();
+      document.getElementById('preview-name').textContent = inboxStore.name;
+      document.getElementById('preview-email').textContent = inboxStore.email || '';
+      document.getElementById('preview-tone').textContent = inboxStore.tone || 'friendly';
+    }
+  }
+
+  // Auto lookup order from Excel
   setTimeout(() => autoLookupFromEmail(), 100);
 
-  // Switch to reply mode
-  switchEmailMode('reply');
-  showPage('email-agent');
+  // Scroll to email textarea
+  document.getElementById('customer-email').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  closeInboxDetail();
 }
 
 // ── OUTBOUND EMAIL ───────────────────────────────────
