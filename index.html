@@ -1119,6 +1119,7 @@ function autoLookupFromEmail() {
   document.getElementById('excel-search-area').style.display = 'flex';
 
   const resultEl = document.getElementById('excel-search-result');
+  window._allMatches = allMatches;
   resultEl.style.display = 'block';
   resultEl.style.maxHeight = '280px';
   resultEl.style.overflowY = 'auto';
@@ -1161,11 +1162,20 @@ function autoLookupFromEmail() {
     }).join('');
 }
 
-function selectOrder(trackVal, rowJsonStr) {
+function selectOrderByIndex(idx) {
+  const matches = window._searchMatches || [];
+  const row = matches[idx];
+  if (!row) return;
+  const trackCol = excelHeaders.find(h => /track/i.test(h));
+  const trackVal = trackCol ? row[trackCol] : '';
+  selectOrder(trackVal, row);
+}
+
+function selectOrder(trackVal, row) {
   try {
-    const row = JSON.parse(rowJsonStr);
+    const rowObj = typeof row === 'string' ? JSON.parse(row) : row;
     agentState = agentState || {};
-    agentState.orderInfo = Object.entries(row).filter(([k,v]) => v).map(([k,v]) => `${k}: ${v}`).join('\n');
+    agentState.orderInfo = Object.entries(rowObj).filter(([k,v]) => v).map(([k,v]) => `${k}: ${v}`).join('\n');
     document.getElementById('tracking-result').value = '';
 
     // Make sure email area is visible so tracking section shows
@@ -1175,8 +1185,9 @@ function selectOrder(trackVal, rowJsonStr) {
     if (trackVal) {
       document.getElementById('tracking-number').value = trackVal;
       updateTrackingLink();
-      // Scroll tracking into view
-      document.getElementById('tracking-number')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      setTimeout(() => {
+        document.getElementById('tracking-number')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 100);
     }
 
     // Update result display to show selected
@@ -1230,26 +1241,37 @@ function searchOrderByEmail(query) {
   resultEl.style.maxHeight = '200px';
   resultEl.style.overflowY = 'auto';
 
-  // Key fields to show (prioritize important info)
   const keyPatterns = [/name|tên/i, /email|mail/i, /order|đơn/i, /track/i, /product|sản phẩm/i, /size/i, /sku/i, /status|trạng thái/i];
+
+  // Store matches in window variable to avoid JSON-in-onclick issues
+  window._searchMatches = matches;
 
   resultEl.innerHTML = matches.slice(0, 5).map((row, idx) => {
     const trackCol = excelHeaders.find(h => /track/i.test(h));
     const trackVal = trackCol ? row[trackCol] : '';
-    const rowJson = JSON.stringify(row).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
 
-    // Show key fields only (max 6 fields)
     const keyFields = excelHeaders.filter(h => row[h] && keyPatterns.some(p => p.test(h))).slice(0,6);
     const showFields = keyFields.length > 0 ? keyFields : excelHeaders.filter(h => row[h]).slice(0,6);
     const fields = showFields.map(h =>
-      `<span style="color:var(--muted);font-size:11px;">${h}:</span> <span style="font-size:11px;font-weight:500;">${row[h]}</span>`
-    ).join(' &nbsp;·&nbsp; ');
+      `<div style="margin-bottom:2px;"><span style="color:var(--muted);font-size:11px;">${h}:</span> <span style="font-size:12px;font-weight:500;">${String(row[h]).replace(/</g,'&lt;')}</span></div>`
+    ).join('');
 
-    return `<div style="padding:7px 8px;border:1px solid var(--border);border-radius:6px;margin-bottom:5px;">
-      <div style="line-height:1.8;">${fields}</div>
-      ${trackVal ? `<button class="btn sm" style="margin-top:5px;font-size:11px;" onclick="applyTracking('${trackVal.replace(/'/g,"\\'")}','${rowJson}')">✓ Dùng tracking: ${trackVal}</button>` : '<div style="font-size:11px;color:var(--muted);margin-top:4px;">⚠ Không tìm thấy tracking number</div>'}
+    return `<div style="padding:8px 10px;border:1px solid var(--border);border-radius:6px;margin-bottom:6px;background:var(--bg3);">
+      <div style="display:flex;align-items:flex-start;gap:8px;">
+        <div style="flex:1;">${fields}</div>
+        <div style="flex-shrink:0;text-align:right;">
+          ${trackVal
+            ? `<div style="font-size:11px;color:var(--accent2);margin-bottom:4px;">🔗 ${String(trackVal).replace(/</g,'&lt;')}</div>`
+            : `<div style="font-size:11px;color:var(--warn);margin-bottom:4px;">⏳ Chưa có tracking</div>`
+          }
+          <button onclick="selectOrderByIndex(${idx})"
+            style="padding:5px 12px;border-radius:6px;background:var(--accent);border:none;color:#fff;font-size:12px;cursor:pointer;font-family:var(--font);">
+            ✓ Chọn đơn này
+          </button>
+        </div>
+      </div>
     </div>`;
-  }).join('') + (matches.length > 5 ? `<div style="font-size:11px;color:var(--muted);padding:4px 0;">...và ${matches.length-5} đơn khác — hãy nhập email chính xác hơn</div>` : '');
+  }).join('') + (matches.length > 5 ? `<div style="font-size:11px;color:var(--muted);padding:4px 0;">...và ${matches.length-5} đơn khác</div>` : '');
 }
 
 function applyTracking(trackNum, rowJson) {
