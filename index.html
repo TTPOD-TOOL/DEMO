@@ -149,6 +149,15 @@
   .policy-title{font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;}
   .save-indicator{font-size:11px;color:var(--accent2);display:none;}
 
+  .inbox-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;transition:border-color .12s;}
+  .inbox-card:hover{border-color:var(--accent);}
+  .inbox-card.active{border-color:var(--accent);background:var(--bg3);}
+  .inbox-card.unread{border-left:3px solid var(--accent);}
+  .inbox-from{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .inbox-subj{font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;}
+  .inbox-snippet{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;}
+  .inbox-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+  .inbox-time{font-size:11px;color:var(--muted);font-family:var(--mono);flex-shrink:0;}
   @media(max-width:768px){
     .sidebar{width:60px;}
     .sidebar-logo,.nav-item span,.sidebar-label,.user-info{display:none;}
@@ -188,6 +197,7 @@ const CONFIG = {
     <div class="sidebar-section">
       <div class="sidebar-label">Công cụ</div>
       <div class="nav-item active" onclick="showPage('email-agent')" id="nav-email"><span class="nav-icon">✉</span><span>Email Agent</span></div>
+      <div class="nav-item" onclick="showPage('inbox')" id="nav-inbox"><span class="nav-icon">📬</span><span>Inbox</span></div>
       <div class="nav-item" onclick="showPage('creative')" id="nav-creative"><span class="nav-icon">🎨</span><span>Creative Agent</span></div>
       <div class="nav-item" onclick="showPage('history')" id="nav-history"><span class="nav-icon">📋</span><span>Lịch sử</span></div>
     </div>
@@ -473,6 +483,75 @@ const CONFIG = {
       </div>
     </div>
 
+
+
+    <!-- INBOX PAGE -->
+    <div id="page-inbox" class="hidden">
+      <div class="topbar">
+        <div>
+          <div class="topbar-title">📬 Inbox</div>
+          <div class="topbar-sub">Đọc email trực tiếp từ PrivateMail — click vào email để xử lý</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <select id="inbox-store-select" onchange="onInboxStoreChange()" style="padding:6px 10px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg3);color:var(--text);">
+            <option value="">-- Chọn store --</option>
+          </select>
+          <button class="btn primary" onclick="loadInbox()" id="inbox-refresh-btn" style="font-size:12px;">⟳ Tải inbox</button>
+        </div>
+      </div>
+      <div class="content" style="display:grid;grid-template-columns:360px 1fr;gap:14px;height:calc(100vh - 70px);">
+
+        <!-- LEFT: Email list -->
+        <div style="display:flex;flex-direction:column;gap:10px;overflow-y:auto;">
+          <div id="inbox-status" class="status-pill" style="width:fit-content;">
+            <div class="dot"></div> Chọn store để tải inbox
+          </div>
+          <div id="inbox-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+        </div>
+
+        <!-- RIGHT: Email content + actions -->
+        <div class="panel" style="overflow-y:auto;">
+          <div id="inbox-placeholder" style="display:flex;align-items:center;justify-content:center;height:100%;">
+            <div class="draft-placeholder">
+              <div style="font-size:32px;margin-bottom:10px;">📬</div>
+              Chọn store → tải inbox<br>Click vào email để đọc & xử lý
+            </div>
+          </div>
+
+          <div id="inbox-detail" style="display:none;flex-direction:column;gap:12px;">
+            <!-- Email header -->
+            <div style="border-bottom:1px solid var(--border);padding-bottom:12px;">
+              <div style="font-size:15px;font-weight:500;margin-bottom:6px;" id="inbox-subject"></div>
+              <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                <span style="font-size:12px;color:var(--muted);">Từ: <strong id="inbox-from" style="color:var(--text);"></strong></span>
+                <span style="font-size:12px;color:var(--muted);">Đến: <span id="inbox-to"></span></span>
+                <span style="font-size:12px;color:var(--muted);" id="inbox-date"></span>
+              </div>
+            </div>
+
+            <!-- Email body -->
+            <div id="inbox-body" style="font-size:13px;line-height:1.7;color:var(--text);white-space:pre-wrap;max-height:350px;overflow-y:auto;background:var(--bg3);padding:12px;border-radius:var(--radius);"></div>
+
+            <!-- Actions -->
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="analyze-btn" onclick="processInboxEmail()" style="flex:2;">
+                ✦ Xử lý email này với Agent
+              </button>
+              <button class="btn" style="flex:1;font-size:12px;" onclick="loadThread()">
+                🔗 Xem toàn bộ thread
+              </button>
+            </div>
+
+            <!-- Thread view -->
+            <div id="inbox-thread" style="display:none;flex-direction:column;gap:8px;border-top:1px solid var(--border);padding-top:12px;">
+              <div style="font-size:12px;font-weight:500;color:var(--muted);">📨 Toàn bộ thread</div>
+              <div id="inbox-thread-list"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
 
     <!-- CREATIVE AGENT PAGE -->
     <div id="page-creative" class="hidden">
@@ -879,7 +958,7 @@ async function doLogout() {
 
 // ── NAVIGATION ───────────────────────────────────────
 function showPage(page) {
-  ['email-agent','creative','history','admin'].forEach(p => {
+  ['email-agent','inbox','creative','history','admin'].forEach(p => {
     document.getElementById('page-'+p).classList.toggle('hidden', p !== page);
     const nav = document.getElementById('nav-'+p);
     if (nav) nav.classList.toggle('active', p === page);
@@ -887,6 +966,7 @@ function showPage(page) {
   if (page === 'history') loadHistory();
   if (page === 'admin') loadAdminData();
   if (page === 'creative') renderCreativeStores();
+  if (page === 'inbox') renderInboxStores();
 }
 
 function switchAdminTab(tab) {
@@ -1197,6 +1277,155 @@ function clearExcelData() {
   document.getElementById('excel-clear-btn').style.display = 'none';
   document.getElementById('excel-status').textContent = '';
   document.getElementById('excel-search-email').value = '';
+}
+
+// ── INBOX ─────────────────────────────────────────────
+let inboxStore = null;
+let selectedInboxEmail = null;
+
+function renderInboxStores() {
+  const sel = document.getElementById('inbox-store-select');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">-- Chọn store --</option>' +
+    stores.map(s => `<option value="${s.id}">${s.name} (${s.email})</option>`).join('');
+}
+
+function onInboxStoreChange() {
+  const id = document.getElementById('inbox-store-select').value;
+  inboxStore = stores.find(s => s.id === id) || null;
+  document.getElementById('inbox-list').innerHTML = '';
+  document.getElementById('inbox-detail').style.display = 'none';
+  document.getElementById('inbox-placeholder').style.display = 'flex';
+  document.getElementById('inbox-thread').style.display = 'none';
+}
+
+async function loadInbox() {
+  if (!inboxStore) { alert('Vui lòng chọn store!'); return; }
+  const btn = document.getElementById('inbox-refresh-btn');
+  const status = document.getElementById('inbox-status');
+  btn.disabled = true; btn.textContent = '⏳ Đang tải...';
+  status.className = 'status-pill active';
+  status.innerHTML = '<div class="dot pulse"></div> Đang tải inbox...';
+  document.getElementById('inbox-list').innerHTML = '';
+
+  try {
+    const data = await callEmailServer('GET', `/inbox/${inboxStore.id}?limit=30`);
+    const emails = data.emails || [];
+    status.className = 'status-pill';
+    status.innerHTML = `<div class="dot"></div> ${emails.length} email — ${inboxStore.name}`;
+
+    if (!emails.length) {
+      document.getElementById('inbox-list').innerHTML = '<div style="color:var(--muted);font-size:13px;padding:10px 0;">Inbox trống!</div>';
+    } else {
+      document.getElementById('inbox-list').innerHTML = emails.map((e, i) => {
+        const from = e.from?.replace(/<.*>/, '').trim() || e.from || 'Unknown';
+        const date = new Date(e.date).toLocaleString('vi-VN', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+        return `<div class="inbox-card" onclick="openInboxEmail(${i})" id="inbox-card-${i}" data-idx="${i}">
+          <div class="inbox-meta">
+            <div class="inbox-from">${from}</div>
+            <div class="inbox-time">${date}</div>
+          </div>
+          <div class="inbox-subj">${e.subject || '(no subject)'}</div>
+          <div class="inbox-snippet">${e.snippet || ''}</div>
+        </div>`;
+      }).join('');
+      window._inboxEmails = emails;
+    }
+  } catch(e) {
+    status.innerHTML = '<div class="dot" style="color:var(--danger)"></div> Lỗi tải inbox';
+    document.getElementById('inbox-list').innerHTML = `<div style="color:var(--danger);font-size:12px;">${e.message}</div>`;
+    console.error(e);
+  }
+  btn.disabled = false; btn.textContent = '⟳ Tải inbox';
+}
+
+function openInboxEmail(idx) {
+  const emails = window._inboxEmails || [];
+  const email = emails[idx];
+  if (!email) return;
+  selectedInboxEmail = email;
+
+  // Highlight selected card
+  document.querySelectorAll('.inbox-card').forEach(c => c.classList.remove('active'));
+  document.getElementById('inbox-card-' + idx)?.classList.add('active');
+
+  // Show detail
+  document.getElementById('inbox-placeholder').style.display = 'none';
+  document.getElementById('inbox-detail').style.display = 'flex';
+  document.getElementById('inbox-thread').style.display = 'none';
+
+  document.getElementById('inbox-subject').textContent = email.subject || '(no subject)';
+  document.getElementById('inbox-from').textContent = email.from || '';
+  document.getElementById('inbox-to').textContent = email.to || '';
+  document.getElementById('inbox-date').textContent = new Date(email.date).toLocaleString('vi-VN');
+  document.getElementById('inbox-body').textContent = email.text || email.html?.replace(/<[^>]+>/g,'') || '';
+}
+
+async function loadThread() {
+  if (!selectedInboxEmail || !inboxStore) return;
+  const btn = document.querySelector('#inbox-thread + * button, #inbox-detail button:last-child');
+  try {
+    const subject = selectedInboxEmail.subject?.replace(/^(re:|fw:|fwd:)\s*/gi,'').trim() || '';
+    const data = await callEmailServer('GET', `/thread/${inboxStore.id}?subject=${encodeURIComponent(subject)}`);
+    const thread = data.thread || [];
+
+    document.getElementById('inbox-thread').style.display = 'flex';
+    document.getElementById('inbox-thread-list').innerHTML = thread.map(e => {
+      const isStore = (e.from||'').toLowerCase().includes(inboxStore.email.toLowerCase());
+      const from = e.from?.replace(/<.*>/, '').trim() || e.from || 'Unknown';
+      const date = new Date(e.date).toLocaleString('vi-VN');
+      return `<div style="padding:10px;border-radius:var(--radius);margin-bottom:6px;background:${isStore?'var(--bg3)':'var(--bg2)'};border-left:3px solid ${isStore?'var(--accent2)':'var(--accent)'};">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:12px;font-weight:500;">${from}</span>
+          <span style="font-size:11px;color:var(--muted);">${date}</span>
+        </div>
+        <div style="font-size:12px;line-height:1.6;color:var(--muted);white-space:pre-wrap;">${(e.text||'').slice(0,300)}${(e.text||'').length>300?'...':''}</div>
+      </div>`;
+    }).join('') || '<div style="color:var(--muted);font-size:12px;">Chỉ có 1 email trong thread này.</div>';
+
+    // Store thread for agent
+    window._currentThread = thread;
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+function processInboxEmail() {
+  if (!selectedInboxEmail) return;
+
+  // Build thread text for agent
+  let threadText = '';
+  const thread = window._currentThread;
+  if (thread && thread.length > 1) {
+    threadText = thread.map((e, i) => {
+      const from = e.from?.replace(/<.*>/, '').trim() || 'Unknown';
+      const date = new Date(e.date).toLocaleDateString('vi-VN');
+      return `--- Email ${i+1} (${date}) ---\nFrom: ${from}\n${e.text || ''}`;
+    }).join('\n\n');
+  } else {
+    const from = selectedInboxEmail.from?.replace(/<.*>/, '').trim() || 'Unknown';
+    threadText = `From: ${from}\nDate: ${new Date(selectedInboxEmail.date).toLocaleDateString('vi-VN')}\n\n${selectedInboxEmail.text || ''}`;
+  }
+
+  // Store thread messageId for reply threading
+  agentState = agentState || {};
+  agentState.threadMessageId = selectedInboxEmail.messageId || '';
+  agentState.threadReferences = selectedInboxEmail.references?.join(' ') || '';
+
+  // Switch to email agent and fill
+  const storeId = inboxStore?.id;
+  if (storeId) {
+    document.getElementById('store-select').value = storeId;
+    onStoreChange();
+  }
+  document.getElementById('customer-email').value = threadText;
+
+  // Auto lookup order
+  setTimeout(() => autoLookupFromEmail(), 100);
+
+  // Switch to reply mode
+  switchEmailMode('reply');
+  showPage('email-agent');
 }
 
 // ── OUTBOUND EMAIL ───────────────────────────────────
