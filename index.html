@@ -1526,7 +1526,11 @@ ${trackingCtx}${scenariosCtx}`;
     // Lưu lịch sử ngay sau khi phân tích xong (draft sẽ update sau)
     if (sb && currentUser) {
       try {
-        const {data: inserted, error: insertErr} = await sb.from('email_logs').insert({
+        // Generate a client-side ID to track this log entry
+        const logId = crypto.randomUUID();
+        agentState.logId = logId;
+        const {error: insertErr} = await sb.from('email_logs').insert({
+          id: logId,
           user_id: currentUser.id,
           user_email: currentUser.email,
           store_id: selectedStore?.id || null,
@@ -1535,9 +1539,8 @@ ${trackingCtx}${scenariosCtx}`;
           categories: parsed.categories,
           summary: parsed.history_summary,
           draft: null,
-        }).select('id');
+        });
         if (insertErr) console.error('Insert error:', insertErr);
-        agentState.logId = inserted?.[0]?.id || null;
       } catch(e2) { console.error('Log insert error:', e2); }
     }
 
