@@ -1526,7 +1526,7 @@ ${trackingCtx}${scenariosCtx}`;
     // Lưu lịch sử ngay sau khi phân tích xong (draft sẽ update sau)
     if (sb && currentUser) {
       try {
-        const {data: inserted} = await sb.from('email_logs').insert({
+        const {data: inserted, error: insertErr} = await sb.from('email_logs').insert({
           user_id: currentUser.id,
           user_email: currentUser.email,
           store_id: selectedStore?.id || null,
@@ -1535,8 +1535,9 @@ ${trackingCtx}${scenariosCtx}`;
           categories: parsed.categories,
           summary: parsed.history_summary,
           draft: null,
-        }).select('id').single();
-        agentState.logId = inserted?.id || null;
+        }).select('id');
+        if (insertErr) console.error('Insert error:', insertErr);
+        agentState.logId = inserted?.[0]?.id || null;
       } catch(e2) { console.error('Log insert error:', e2); }
     }
 
@@ -2052,10 +2053,11 @@ async function loadAdminData() {
   : '<tr><td colspan="5" style="color:var(--muted)">Chưa có cửa hàng nào. Thêm cửa hàng đầu tiên!</td></tr>';
 
   // Staff + logs
-  // Fetch all users from view + email logs in parallel
+  // Fetch all users + email logs in parallel
   const [{data:users}, {data:logs}] = await Promise.all([
     sb.from('user_list').select('*').order('created_at', {ascending:false}),
-    sb.from('email_logs').select('*').order('created_at',{ascending:false}).limit(200)
+    sb.from('email_logs').select('id, user_id, user_email, store_name, summary, categories, created_at')
+      .order('created_at', {ascending:false}).limit(500)
   ]);
 
   // Count emails per user
