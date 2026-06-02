@@ -1039,8 +1039,10 @@ function autoLookupFromEmail() {
         updateTrackingLink();
         const rowJson = JSON.stringify(match).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
         // Fill order info for agent context
-        const info = Object.entries(match).filter(([k,v]) => v).map(([k,v]) => `${k}: ${v}`).join('\n');
-        document.getElementById('tracking-result').value = info;
+        // Store order info for agent context (not in tracking textarea)
+        agentState = agentState || {};
+        agentState.orderInfo = Object.entries(match).filter(([k,v]) => v).map(([k,v]) => `${k}: ${v}`).join('\n');
+        document.getElementById('tracking-result').value = '';
 
         // Show auto-filled notice
         const resultEl = document.getElementById('excel-search-result');
@@ -1065,9 +1067,10 @@ function autoLookupFromEmail() {
         const fields = allFields.map(h =>
           `<span style="color:var(--muted);font-size:11px;">${h}:</span> <span style="font-size:11px;font-weight:500;">${match[h]}</span>`
         ).join(' &nbsp;·&nbsp; ');
-        // Fill order info without tracking
-        const info = Object.entries(match).filter(([k,v]) => v).map(([k,v]) => `${k}: ${v}`).join('\n');
-        document.getElementById('tracking-result').value = info;
+        // Store order info for agent context (not in tracking textarea)
+        agentState = agentState || {};
+        agentState.orderInfo = Object.entries(match).filter(([k,v]) => v).map(([k,v]) => `${k}: ${v}`).join('\n');
+        document.getElementById('tracking-result').value = '';
         resultEl.innerHTML = `<div style="color:var(--warn);font-size:12px;margin-bottom:6px;">⏳ Tìm thấy đơn hàng — chưa có mã tracking (đang xử lý)</div>
           <div style="padding:7px 8px;border:1px solid var(--border);border-radius:6px;line-height:1.8;">${fields}</div>`;
       }
@@ -1135,11 +1138,14 @@ function searchOrderByEmail(query) {
 function applyTracking(trackNum, rowJson) {
   document.getElementById('tracking-number').value = trackNum;
   updateTrackingLink();
+  // Store order info separately — don't put in tracking-result textarea
   try {
     const row = JSON.parse(rowJson);
-    const info = Object.entries(row).filter(([k,v]) => v).map(([k,v]) => `${k}: ${v}`).join('\n');
-    document.getElementById('tracking-result').value = info;
+    agentState = agentState || {};
+    agentState.orderInfo = Object.entries(row).filter(([k,v]) => v).map(([k,v]) => `${k}: ${v}`).join('\n');
   } catch(e) {}
+  // Clear tracking result — let user paste actual tracking status
+  document.getElementById('tracking-result').value = '';
   document.getElementById('excel-search-result').innerHTML =
     `<div style="color:var(--accent2);font-size:12px;">✓ Đã điền tracking: ${trackNum}</div>`;
 }
@@ -1459,11 +1465,13 @@ When you identify a matching scenario, apply its handling direction and tone in 
   // Get tracking info if available
   const trackingNumber = document.getElementById('tracking-number').value.trim();
   const trackingResult = document.getElementById('tracking-result').value.trim();
-  const trackingCtx = (trackingNumber || trackingResult) ? `
-TRACKING INFO:
+  const orderInfo = agentState?.orderInfo || '';
+  const trackingCtx = (trackingNumber || trackingResult || orderInfo) ? `
+ORDER & TRACKING INFO:
+${orderInfo ? `Order details from system:\n${orderInfo}` : ''}
 ${trackingNumber ? `Tracking number: ${trackingNumber}` : ''}
-${trackingResult ? `Current tracking status:\n${trackingResult}` : '(Status not yet checked)'}
-Use this tracking information when suggesting how to handle the customer's inquiry.
+${trackingResult ? `Current tracking status:\n${trackingResult}` : trackingNumber ? '(Tracking status not yet checked — customer may need to wait)' : ''}
+Use this information when analyzing and suggesting how to handle the customer's inquiry.
 ` : '';
 
   const system = `You are a senior customer service manager for a POD store on ShopBase.
@@ -1567,11 +1575,13 @@ async function submitFeedback() {
   // Get tracking info if available
   const trackingNumber = document.getElementById('tracking-number').value.trim();
   const trackingResult = document.getElementById('tracking-result').value.trim();
-  const trackingCtx = (trackingNumber || trackingResult) ? `
-TRACKING INFO:
+  const orderInfo = agentState?.orderInfo || '';
+  const trackingCtx = (trackingNumber || trackingResult || orderInfo) ? `
+ORDER & TRACKING INFO:
+${orderInfo ? `Order details from system:\n${orderInfo}` : ''}
 ${trackingNumber ? `Tracking number: ${trackingNumber}` : ''}
-${trackingResult ? `Current tracking status:\n${trackingResult}` : '(Status not yet checked)'}
-Use this tracking information when suggesting how to handle the customer's inquiry.
+${trackingResult ? `Current tracking status:\n${trackingResult}` : trackingNumber ? '(Tracking status not yet checked — customer may need to wait)' : ''}
+Use this information when analyzing and suggesting how to handle the customer's inquiry.
 ` : '';
 
   const system = `You are a senior customer service manager for a POD store on ShopBase.
@@ -1706,6 +1716,7 @@ function resetAgent() {
   document.getElementById('tracking-link-row').classList.add('hidden');
   document.getElementById('excel-search-email').value = '';
   document.getElementById('excel-search-result').style.display = 'none';
+  if (agentState) agentState.orderInfo = null;
   document.getElementById('output-placeholder').classList.remove('hidden');
   document.getElementById('output-analysis').classList.add('hidden');
   document.getElementById('draft-section').classList.add('hidden');
