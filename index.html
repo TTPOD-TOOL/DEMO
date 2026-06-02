@@ -197,7 +197,6 @@ const CONFIG = {
     <div class="sidebar-section">
       <div class="sidebar-label">Công cụ</div>
       <div class="nav-item active" onclick="showPage('email-agent')" id="nav-email"><span class="nav-icon">✉</span><span>Email Agent</span></div>
-      <div class="nav-item" onclick="showPage('inbox')" id="nav-inbox"><span class="nav-icon">📬</span><span>Inbox</span></div>
       <div class="nav-item" onclick="showPage('creative')" id="nav-creative"><span class="nav-icon">🎨</span><span>Creative Agent</span></div>
       <div class="nav-item" onclick="showPage('history')" id="nav-history"><span class="nav-icon">📋</span><span>Lịch sử</span></div>
     </div>
@@ -331,6 +330,7 @@ const CONFIG = {
           </div>
         </div>
 
+
         <!-- REPLY MODE (default) -->
         <div id="reply-mode">
         <!-- ROW 1: INPUT + ANALYSIS -->
@@ -353,6 +353,44 @@ const CONFIG = {
               </div>
               <span class="tag tag-green" id="preview-tone">friendly</span>
             </div>
+
+            <!-- INLINE INBOX — hiện sau khi chọn store -->
+            <div id="inline-inbox" style="display:none;flex-direction:column;gap:8px;border:1px solid var(--border);border-radius:var(--radius);padding:10px;background:var(--bg3);">
+              <div style="display:flex;align-items:center;justify-content:space-between;">
+                <div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.05em;">📬 INBOX</div>
+                <div style="display:flex;gap:6px;align-items:center;">
+                  <div id="inbox-status" class="status-pill" style="font-size:10px;padding:2px 8px;">
+                    <div class="dot"></div> Chưa tải
+                  </div>
+                  <button class="btn sm" onclick="loadInbox()" id="inbox-refresh-btn" style="font-size:11px;">⟳ Tải inbox</button>
+                </div>
+              </div>
+              <div id="inbox-list" style="display:flex;flex-direction:column;gap:5px;max-height:200px;overflow-y:auto;"></div>
+            </div>
+
+            <!-- EMAIL DETAIL POPUP (hiện khi click email trong inbox) -->
+            <div id="inbox-detail-panel" style="display:none;flex-direction:column;gap:8px;border:1px solid var(--accent);border-radius:var(--radius);padding:10px;background:var(--bg2);">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+                <div style="flex:1;">
+                  <div style="font-size:13px;font-weight:500;margin-bottom:3px;" id="inbox-subject"></div>
+                  <div style="font-size:11px;color:var(--muted);">
+                    Từ: <strong id="inbox-from" style="color:var(--text);"></strong>
+                    <span style="margin-left:8px;" id="inbox-date"></span>
+                  </div>
+                </div>
+                <button onclick="closeInboxDetail()" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:16px;flex-shrink:0;">✕</button>
+              </div>
+              <div id="inbox-body" style="font-size:12px;line-height:1.6;white-space:pre-wrap;max-height:150px;overflow-y:auto;color:var(--muted);"></div>
+              <div style="display:flex;gap:6px;">
+                <button class="btn sm" onclick="loadThread()" style="font-size:11px;">🔗 Xem thread</button>
+                <button onclick="processInboxEmail()" style="flex:1;padding:6px;border-radius:var(--radius);background:var(--accent);border:none;color:#fff;font-size:12px;font-weight:500;cursor:pointer;">✦ Xử lý email này</button>
+              </div>
+              <div id="inbox-thread" style="display:none;flex-direction:column;gap:4px;border-top:1px solid var(--border);padding-top:8px;">
+                <div style="font-size:11px;font-weight:500;color:var(--muted);">📨 Thread</div>
+                <div id="inbox-thread-list" style="max-height:200px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;"></div>
+              </div>
+            </div>
+
             <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
               <label>Toàn bộ chuỗi email (copy từ đầu đến cuối)</label>
               <textarea class="email-input" id="customer-email" placeholder="Dán toàn bộ chuỗi email vào đây, bao gồm cả các email cũ...&#10;&#10;VD:&#10;--- Email 1 (3 ngày trước) ---&#10;Customer: Hi, I ordered #1234 but haven't received it...&#10;&#10;--- Email 2 (2 ngày trước) ---&#10;Store: Hi! We are checking on your order...&#10;&#10;--- Email 3 (hôm nay) ---&#10;Customer: Still no update, I want a refund!" onblur="autoLookupFromEmail()" onpaste="setTimeout(autoLookupFromEmail, 100)"></textarea>
@@ -484,74 +522,6 @@ const CONFIG = {
     </div>
 
 
-
-    <!-- INBOX PAGE -->
-    <div id="page-inbox" class="hidden">
-      <div class="topbar">
-        <div>
-          <div class="topbar-title">📬 Inbox</div>
-          <div class="topbar-sub">Đọc email trực tiếp từ PrivateMail — click vào email để xử lý</div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <select id="inbox-store-select" onchange="onInboxStoreChange()" style="padding:6px 10px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg3);color:var(--text);">
-            <option value="">-- Chọn store --</option>
-          </select>
-          <button class="btn primary" onclick="loadInbox()" id="inbox-refresh-btn" style="font-size:12px;">⟳ Tải inbox</button>
-        </div>
-      </div>
-      <div class="content" style="display:grid;grid-template-columns:360px 1fr;gap:14px;height:calc(100vh - 70px);">
-
-        <!-- LEFT: Email list -->
-        <div style="display:flex;flex-direction:column;gap:10px;overflow-y:auto;">
-          <div id="inbox-status" class="status-pill" style="width:fit-content;">
-            <div class="dot"></div> Chọn store để tải inbox
-          </div>
-          <div id="inbox-list" style="display:flex;flex-direction:column;gap:8px;"></div>
-        </div>
-
-        <!-- RIGHT: Email content + actions -->
-        <div class="panel" style="overflow-y:auto;">
-          <div id="inbox-placeholder" style="display:flex;align-items:center;justify-content:center;height:100%;">
-            <div class="draft-placeholder">
-              <div style="font-size:32px;margin-bottom:10px;">📬</div>
-              Chọn store → tải inbox<br>Click vào email để đọc & xử lý
-            </div>
-          </div>
-
-          <div id="inbox-detail" style="display:none;flex-direction:column;gap:12px;">
-            <!-- Email header -->
-            <div style="border-bottom:1px solid var(--border);padding-bottom:12px;">
-              <div style="font-size:15px;font-weight:500;margin-bottom:6px;" id="inbox-subject"></div>
-              <div style="display:flex;gap:12px;flex-wrap:wrap;">
-                <span style="font-size:12px;color:var(--muted);">Từ: <strong id="inbox-from" style="color:var(--text);"></strong></span>
-                <span style="font-size:12px;color:var(--muted);">Đến: <span id="inbox-to"></span></span>
-                <span style="font-size:12px;color:var(--muted);" id="inbox-date"></span>
-              </div>
-            </div>
-
-            <!-- Email body -->
-            <div id="inbox-body" style="font-size:13px;line-height:1.7;color:var(--text);white-space:pre-wrap;max-height:350px;overflow-y:auto;background:var(--bg3);padding:12px;border-radius:var(--radius);"></div>
-
-            <!-- Actions -->
-            <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <button class="analyze-btn" onclick="processInboxEmail()" style="flex:2;">
-                ✦ Xử lý email này với Agent
-              </button>
-              <button class="btn" style="flex:1;font-size:12px;" onclick="loadThread()">
-                🔗 Xem toàn bộ thread
-              </button>
-            </div>
-
-            <!-- Thread view -->
-            <div id="inbox-thread" style="display:none;flex-direction:column;gap:8px;border-top:1px solid var(--border);padding-top:12px;">
-              <div style="font-size:12px;font-weight:500;color:var(--muted);">📨 Toàn bộ thread</div>
-              <div id="inbox-thread-list"></div>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </div>
 
     <!-- CREATIVE AGENT PAGE -->
     <div id="page-creative" class="hidden">
@@ -958,7 +928,7 @@ async function doLogout() {
 
 // ── NAVIGATION ───────────────────────────────────────
 function showPage(page) {
-  ['email-agent','inbox','creative','history','admin'].forEach(p => {
+  ['email-agent','creative','history','admin'].forEach(p => {
     document.getElementById('page-'+p).classList.toggle('hidden', p !== page);
     const nav = document.getElementById('nav-'+p);
     if (nav) nav.classList.toggle('active', p === page);
@@ -966,7 +936,6 @@ function showPage(page) {
   if (page === 'history') loadHistory();
   if (page === 'admin') loadAdminData();
   if (page === 'creative') renderCreativeStores();
-  if (page === 'inbox') renderInboxStores();
 }
 
 function switchAdminTab(tab) {
@@ -996,14 +965,25 @@ function onStoreChange() {
   const id = document.getElementById('store-select').value;
   selectedStore = stores.find(s => s.id === id) || null;
   const preview = document.getElementById('store-preview');
+  const inlineInbox = document.getElementById('inline-inbox');
   if (selectedStore) {
     preview.classList.remove('hidden');
     document.getElementById('preview-logo').textContent = selectedStore.name[0].toUpperCase();
     document.getElementById('preview-name').textContent = selectedStore.name;
     document.getElementById('preview-email').textContent = selectedStore.email || '(chưa có email)';
     document.getElementById('preview-tone').textContent = selectedStore.tone || 'friendly';
+    // Show inline inbox and sync store
+    if (inlineInbox) {
+      inlineInbox.style.display = 'flex';
+      // Sync inbox store
+      inboxStore = selectedStore;
+      // Auto-load inbox
+      loadInbox();
+    }
   } else {
     preview.classList.add('hidden');
+    if (inlineInbox) inlineInbox.style.display = 'none';
+    document.getElementById('inbox-detail-panel').style.display = 'none';
   }
 }
 
@@ -1349,16 +1329,21 @@ function openInboxEmail(idx) {
   document.querySelectorAll('.inbox-card').forEach(c => c.classList.remove('active'));
   document.getElementById('inbox-card-' + idx)?.classList.add('active');
 
-  // Show detail
-  document.getElementById('inbox-placeholder').style.display = 'none';
-  document.getElementById('inbox-detail').style.display = 'flex';
+  // Show inline detail panel
+  const detail = document.getElementById('inbox-detail-panel');
+  detail.style.display = 'flex';
   document.getElementById('inbox-thread').style.display = 'none';
+  document.getElementById('inbox-thread-list').innerHTML = '';
 
   document.getElementById('inbox-subject').textContent = email.subject || '(no subject)';
-  document.getElementById('inbox-from').textContent = email.from || '';
-  document.getElementById('inbox-to').textContent = email.to || '';
-  document.getElementById('inbox-date').textContent = new Date(email.date).toLocaleString('vi-VN');
-  document.getElementById('inbox-body').textContent = email.text || email.html?.replace(/<[^>]+>/g,'') || '';
+  document.getElementById('inbox-from').textContent = email.from?.replace(/<.*>/, '').trim() || email.from || '';
+  document.getElementById('inbox-date').textContent = new Date(email.date).toLocaleString('vi-VN',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  document.getElementById('inbox-body').textContent = (email.text || '').slice(0, 500) + ((email.text||'').length > 500 ? '...' : '');
+}
+
+function closeInboxDetail() {
+  document.getElementById('inbox-detail-panel').style.display = 'none';
+  document.querySelectorAll('.inbox-card').forEach(c => c.classList.remove('active'));
 }
 
 async function loadThread() {
@@ -1433,17 +1418,22 @@ let outboundStore = null;
 let currentOutboundDraft = '';
 
 function switchEmailMode(mode) {
-  const isReply = mode === 'reply';
-  document.getElementById('reply-mode').style.display = isReply ? 'block' : 'none';
-  document.getElementById('outbound-mode').style.display = isReply ? 'none' : 'block';
-  document.getElementById('mode-reply-btn').style.background = isReply ? 'var(--accent)' : 'transparent';
-  document.getElementById('mode-reply-btn').style.color = isReply ? '#fff' : 'var(--muted)';
-  document.getElementById('mode-outbound-btn').style.background = isReply ? 'transparent' : 'var(--accent)';
-  document.getElementById('mode-outbound-btn').style.color = isReply ? 'var(--muted)' : '#fff';
-  const sub = document.getElementById('email-agent-sub');
-  sub.textContent = isReply
-    ? 'Chọn store → dán chuỗi email → agent phân tích & soạn phản hồi'
-    : 'Chọn store → điền thông tin → agent viết email chủ động đến khách';
+  document.getElementById('reply-mode').style.display = mode==='reply' ? 'block' : 'none';
+  document.getElementById('outbound-mode').style.display = mode==='outbound' ? 'block' : 'none';
+
+  const btns = { 'reply': 'mode-reply-btn', 'outbound': 'mode-outbound-btn' };
+  Object.entries(btns).forEach(([m, id]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.background = m===mode ? 'var(--accent)' : 'transparent';
+    el.style.color = m===mode ? '#fff' : 'var(--muted)';
+  });
+
+  const subs = {
+    'reply': 'Chọn store → inbox tự hiện → click email → agent phân tích & soạn phản hồi',
+    'outbound': 'Chọn store → điền thông tin → agent viết email chủ động đến khách',
+  };
+  document.getElementById('email-agent-sub').textContent = subs[mode] || '';
   if (mode === 'outbound') renderOutboundStores();
 }
 
