@@ -1336,11 +1336,13 @@ async function loadInbox() {
     status.innerHTML = `<div class="dot"></div> ${emails.length} email — ${inboxStore.name}`;
 
     if (!emails.length) {
-      document.getElementById('inbox-list').innerHTML = '<div style="color:var(--muted);font-size:13px;padding:10px 0;">Inbox trống!</div>';
+      document.getElementById('inbox-list').innerHTML = '<div style="color:var(--muted);font-size:13px;padding:10px 0;">✓ Không có email chưa đọc!</div>';
     } else {
-      const unreadCount = emails.filter(e => !e.seen).length;
+      const unreadCount = emails.length;
       if (unreadCount > 0) {
-        status.innerHTML = `<div class="dot" style="color:var(--accent2)"></div> ${emails.length} email · <strong style="color:var(--accent2)">${unreadCount} chưa đọc</strong>`;
+        status.innerHTML = `<div class="dot" style="color:var(--accent2)"></div> <strong style="color:var(--accent2)">${unreadCount} chưa đọc</strong>`;
+      } else {
+        status.innerHTML = `<div class="dot"></div> Không có email chưa đọc`;
       }
       document.getElementById('inbox-list').innerHTML = emails.map((e, i) => {
         const from = e.from?.replace(/<.*>/, '').trim() || e.from || 'Unknown';
