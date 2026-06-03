@@ -2457,27 +2457,29 @@ async function sendReplyEmail() {
       references,
     });
 
+    // Email sent successfully!
     statusEl.style.display = 'block';
     statusEl.style.background = '#1a3a24';
     statusEl.style.color = '#86efac';
     statusEl.textContent = `✓ Đã gửi thành công đến ${customerEmail}!`;
+    btn.style.background = '#1D9E75';
     btn.textContent = '✓ Đã gửi!';
 
-    // Log to DB
+    // Log to DB (non-blocking — don't let DB error affect send success)
     if (sb && currentUser && agentState?.logId) {
-      await sb.from('email_logs').update({
+      sb.from('email_logs').update({
         draft: currentDraft,
         sent: true,
         sent_to: customerEmail,
         sent_at: new Date().toISOString(),
-      }).eq('id', agentState.logId);
+      }).eq('id', agentState.logId).then(() => {}).catch(() => {});
     }
 
   } catch(e) {
     statusEl.style.display = 'block';
     statusEl.style.background = '#3a1a1a';
     statusEl.style.color = '#fca5a5';
-    statusEl.textContent = '⚠️ Lỗi: ' + e.message;
+    statusEl.textContent = '⚠️ Lỗi gửi: ' + e.message;
     btn.disabled = false;
     btn.textContent = '📤 Gửi email trực tiếp';
     console.error(e);
@@ -2493,7 +2495,9 @@ async function sendOutboundEmail() {
   if (!customerEmail) { alert('Chưa có email khách!'); return; }
 
   const btn = document.getElementById('outbound-send-btn');
-  if (btn) btn.disabled = true;
+  const statusEl = document.getElementById('outbound-send-status');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Đang gửi...'; }
+  if (statusEl) statusEl.style.display = 'none';
 
   try {
     const draftLines = currentOutboundDraft.split('\n').map(l => l.trim()).filter(Boolean);
@@ -2507,17 +2511,22 @@ async function sendOutboundEmail() {
       replyToName: document.getElementById('outbound-customer-name').value.trim(),
     });
 
-    const statusEl = document.getElementById('outbound-send-status');
     if (statusEl) {
       statusEl.style.display = 'block';
       statusEl.style.background = '#1a3a24';
       statusEl.style.color = '#86efac';
       statusEl.textContent = `✓ Đã gửi thành công đến ${customerEmail}!`;
     }
-    if (btn) btn.textContent = '✓ Đã gửi!';
+    if (btn) { btn.style.background = '#1D9E75'; btn.textContent = '✓ Đã gửi!'; }
   } catch(e) {
-    alert('Lỗi gửi email: ' + e.message);
-    if (btn) { btn.disabled = false; btn.textContent = '📤 Gửi email'; }
+    if (statusEl) {
+      statusEl.style.display = 'block';
+      statusEl.style.background = '#3a1a1a';
+      statusEl.style.color = '#fca5a5';
+      statusEl.textContent = '⚠️ Lỗi: ' + e.message;
+    }
+    if (btn) { btn.disabled = false; btn.textContent = '📤 Gửi email trực tiếp'; }
+    console.error('Send error:', e);
   }
 }
 
