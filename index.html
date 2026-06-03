@@ -1163,11 +1163,11 @@ function autoLookupFromEmail() {
 }
 
 function selectOrderByIndex(idx) {
-  const matches = window._searchMatches || [];
+  const matches = window._searchMatches || window._allMatches || [];
   const row = matches[idx];
   if (!row) return;
   const trackCol = excelHeaders.find(h => /track/i.test(h));
-  const trackVal = trackCol ? row[trackCol] : '';
+  const trackVal = trackCol ? (row[trackCol] || '') : '';
   selectOrder(trackVal, row);
 }
 
