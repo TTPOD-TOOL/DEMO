@@ -1140,9 +1140,8 @@ function autoLookupFromEmail() {
         `<div style="margin-bottom:2px;"><span style="color:var(--muted);font-size:11px;">${h}:</span> <span style="font-size:12px;font-weight:500;">${row[h]}</span></div>`
       ).join('');
 
-      const rowJsonSafe = JSON.stringify(row).replace(/\\/g,'\\\\').replace(/`/g,"'");
-
-      return `<div style="padding:10px;border:1px solid ${hasTrack?'var(--border)':'var(--border)'};border-radius:8px;margin-bottom:8px;background:var(--bg3);">
+      // Store idx reference — use window._allMatches[idx]
+      return `<div style="padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:var(--bg3);">
         <div style="display:flex;align-items:flex-start;gap:10px;">
           <div style="flex:1;">
             ${fields}
@@ -1152,7 +1151,7 @@ function autoLookupFromEmail() {
               ? `<div style="font-size:11px;color:var(--accent2);margin-bottom:4px;">🔗 ${trackVal}</div>`
               : `<div style="font-size:11px;color:var(--warn);margin-bottom:4px;">⏳ Chưa có tracking</div>`
             }
-            <button onclick="selectOrder(${JSON.stringify(trackVal||'')}, \`${rowJsonSafe}\`)"
+            <button onclick="selectOrderByIndex(${idx})"
               style="padding:5px 12px;border-radius:6px;background:var(--accent);border:none;color:#fff;font-size:12px;cursor:pointer;font-family:var(--font);">
               ✓ Chọn đơn này
             </button>
@@ -1163,12 +1162,24 @@ function autoLookupFromEmail() {
 }
 
 function selectOrderByIndex(idx) {
-  const matches = window._searchMatches || window._allMatches || [];
-  const row = matches[idx];
-  if (!row) return;
+  const row = (window._allMatches || window._searchMatches || [])[idx];
+  if (!row) { console.warn('No row at idx', idx); return; }
   const trackCol = excelHeaders.find(h => /track/i.test(h));
-  const trackVal = trackCol ? (row[trackCol] || '') : '';
-  selectOrder(trackVal, row);
+  const trackVal = (trackCol && row[trackCol]) ? String(row[trackCol]).trim() : '';
+  // Fill tracking
+  const tnInput = document.getElementById('tracking-number');
+  if (tnInput) { tnInput.value = trackVal; updateTrackingLink(); }
+  // Store order info
+  agentState = agentState || {};
+  agentState.orderInfo = Object.entries(row).filter(([k,v]) => v).map(([k,v]) => k+': '+v).join('\n');
+  // Show email area
+  const ea = document.getElementById('email-input-area');
+  if (ea) ea.style.display = 'flex';
+  // Update result display
+  document.getElementById('excel-search-result').innerHTML =
+    `<div style="color:var(--accent2);font-size:12px;padding:6px 0;">✓ Đã chọn đơn${trackVal?' — Tracking: <strong>'+trackVal+'</strong>':' — chưa có tracking'}</div>`;
+  // Scroll tracking into view
+  if (tnInput) setTimeout(() => tnInput.scrollIntoView({behavior:'smooth',block:'nearest'}), 100);
 }
 
 function selectOrder(trackVal, row) {
