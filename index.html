@@ -149,6 +149,14 @@
   .policy-title{font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;}
   .save-indicator{font-size:11px;color:var(--accent2);display:none;}
 
+  /* Step layout */
+  .step-block{padding:12px 16px;border-bottom:1px solid var(--border);}
+  .step-block:last-child{border-bottom:none;}
+  .step-header{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+  .step-badge{width:20px;height:20px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .step-title{font-size:12px;font-weight:600;color:var(--text);}
+  .upload-zone{border:1px dashed var(--border);border-radius:var(--radius);padding:7px 12px;font-size:12px;color:var(--muted);cursor:pointer;text-align:center;transition:border-color .15s;}
+
   .inbox-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;transition:border-color .12s;}
   .inbox-card:hover{border-color:var(--accent);}
   .inbox-card.active{border-color:var(--accent);background:var(--bg3);}
@@ -311,16 +319,12 @@ const CONFIG = {
                   <div style="display:flex;flex-direction:column;gap:6px;">
                     <label style="display:flex;align-items:center;gap:6px;">✉ Email gốc <span style="font-size:11px;color:var(--muted);">(copy gửi khách)</span></label>
                     <div class="draft-box" id="outbound-draft-original" style="min-height:200px;"></div>
-                    <button class="copy-btn" onclick="copyOutboundDraft()" style="flex:1;">⎘ Copy</button>
-                <button id="outbound-send-btn" onclick="sendOutboundEmail()"
-                  style="flex:2;padding:8px;border-radius:var(--radius);background:var(--accent2);border:none;color:#172f17;font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;">
-                  📤 Gửi email trực tiếp
-                </button>
+                    <button class="copy-btn" onclick="copyOutboundDraft()">⎘ Copy email gốc — dán vào PrivateMail để gửi</button>
                   </div>
                   <div style="display:flex;flex-direction:column;gap:6px;">
                     <label>🇻🇳 Bản dịch tiếng Việt</label>
                     <div class="draft-box" id="outbound-draft-vietnamese" style="min-height:200px;color:var(--muted);"></div>
-                  <div id="outbound-send-status" style="font-size:12px;display:none;padding:6px 10px;border-radius:var(--radius);margin-top:4px;"></div>
+
                   </div>
                 </div>
                 <button class="btn" style="font-size:12px;width:100%;" onclick="resetOutbound()">↺ Viết email khác</button>
@@ -336,113 +340,115 @@ const CONFIG = {
         <!-- ROW 1: INPUT + ANALYSIS -->
         <div class="agent-grid">
 
-          <!-- LEFT: INPUT -->
-          <div class="panel">
-            <div class="panel-head">📥 Chuỗi email khách hàng</div>
-            <div>
-              <label>Cửa hàng</label>
-              <select id="store-select" onchange="onStoreChange()">
-                <option value="">-- Đang tải cửa hàng... --</option>
-              </select>
-            </div>
-            <div id="store-preview" class="store-selector-bar hidden">
-              <div class="store-logo" id="preview-logo">?</div>
-              <div class="store-info-text">
-                <div class="store-name-text" id="preview-name">—</div>
-                <div class="store-email-text" id="preview-email">—</div>
-              </div>
-              <span class="tag tag-green" id="preview-tone">friendly</span>
-            </div>
+          <!-- LEFT: INPUT — New stepped layout -->
+          <div class="panel" style="gap:0;">
 
-            <!-- INLINE INBOX — hiện sau khi chọn store -->
-            <div id="inline-inbox" style="display:none;flex-direction:column;gap:8px;border:1px solid var(--border);border-radius:var(--radius);padding:10px;background:var(--bg3);">
-              <div style="display:flex;align-items:center;justify-content:space-between;">
-                <div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.05em;">📬 INBOX</div>
-                <div style="display:flex;gap:6px;align-items:center;">
-                  <div id="inbox-status" class="status-pill" style="font-size:10px;padding:2px 8px;">
-                    <div class="dot"></div> Chưa tải
-                  </div>
-                  <button class="btn sm" onclick="loadInbox()" id="inbox-refresh-btn" style="font-size:11px;">⟳ Tải inbox</button>
-                </div>
+            <!-- BƯỚC 1: Upload file đơn hàng -->
+            <div class="step-block">
+              <div class="step-header">
+                <div class="step-badge">1</div>
+                <div class="step-title">Upload file đơn hàng</div>
+                <div id="excel-status" style="font-size:11px;color:var(--accent2);margin-left:auto;"></div>
               </div>
-              <div id="inbox-list" style="display:flex;flex-direction:column;gap:5px;max-height:200px;overflow-y:auto;"></div>
-            </div>
-
-            <!-- EMAIL DETAIL POPUP (hiện khi click email trong inbox) -->
-            <div id="inbox-detail-panel" style="display:none;flex-direction:column;gap:8px;border:1px solid var(--accent);border-radius:var(--radius);padding:10px;background:var(--bg2);">
-              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
-                <div style="flex:1;">
-                  <div style="font-size:13px;font-weight:500;margin-bottom:3px;" id="inbox-subject"></div>
-                  <div style="font-size:11px;color:var(--muted);">
-                    Từ: <strong id="inbox-from" style="color:var(--text);"></strong>
-                    <span style="margin-left:8px;" id="inbox-date"></span>
-                  </div>
-                </div>
-                <button onclick="closeInboxDetail()" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:16px;flex-shrink:0;">✕</button>
-              </div>
-              <!-- AI Summary -->
-              <div id="inbox-ai-summary" style="display:none;"></div>
-              <!-- Raw body (collapsible) -->
-              <div id="inbox-body" style="font-size:11px;line-height:1.6;white-space:pre-wrap;max-height:100px;overflow-y:auto;color:var(--muted);"></div>
-              <div style="display:flex;gap:6px;">
-                <button class="btn sm" onclick="loadThread()" style="font-size:11px;">🔗 Xem thread</button>
-                <button onclick="processInboxEmail()" style="flex:1;padding:7px;border-radius:var(--radius);background:var(--accent);border:none;color:#fff;font-size:12px;font-weight:500;cursor:pointer;">✦ Xử lý ngay</button>
-              </div>
-              <div id="inbox-thread" style="display:none;flex-direction:column;gap:4px;border-top:1px solid var(--border);padding-top:8px;">
-                <div style="font-size:11px;font-weight:500;color:var(--muted);">📨 Thread</div>
-                <div id="inbox-thread-list" style="max-height:200px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;"></div>
-              </div>
-            </div>
-
-            <div id="email-input-area" style="flex:1;display:flex;flex-direction:column;gap:6px;">
-              <label style="display:flex;align-items:center;justify-content:space-between;">
-                <span>Toàn bộ chuỗi email</span>
-                <span id="email-source-badge" style="font-size:11px;color:var(--accent2);display:none;">✓ Lấy từ inbox</span>
-              </label>
-              <textarea class="email-input" id="customer-email" placeholder="Dán toàn bộ chuỗi email vào đây, bao gồm cả các email cũ...&#10;&#10;VD:&#10;--- Email 1 (3 ngày trước) ---&#10;Customer: Hi, I ordered #1234 but haven't received it...&#10;&#10;--- Email 2 (2 ngày trước) ---&#10;Store: Hi! We are checking on your order...&#10;&#10;--- Email 3 (hôm nay) ---&#10;Customer: Still no update, I want a refund!" onblur="autoLookupFromEmail()" onpaste="setTimeout(autoLookupFromEmail, 100)"></textarea>
-            </div>
-            <!-- EXCEL LOOKUP + TRACKING SECTION -->
-            <div style="border:1px solid var(--border);border-radius:var(--radius);padding:12px;display:flex;flex-direction:column;gap:10px;background:var(--bg3);">
-              <div style="display:flex;align-items:center;justify-content:space-between;">
-                <div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.05em;">📊 TRA CỨU ĐƠN HÀNG (tuỳ chọn)</div>
-                <div id="excel-status" style="font-size:11px;color:var(--muted);"></div>
-              </div>
-
-              <!-- Upload Excel -->
               <div id="excel-upload-area" style="display:flex;gap:6px;align-items:center;">
                 <label style="margin:0;flex:1;">
-                  <div style="border:1px dashed var(--border);border-radius:var(--radius);padding:7px 12px;font-size:12px;color:var(--muted);cursor:pointer;text-align:center;transition:border-color .15s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'" id="excel-drop-label">
+                  <div class="upload-zone" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'" id="excel-drop-label">
                     📂 Upload file Excel / CSV đơn hàng
                   </div>
                   <input type="file" id="excel-file-input" accept=".xlsx,.xls,.csv" style="display:none;" onchange="loadExcelFile(this)"/>
                 </label>
-                <button class="btn sm" onclick="clearExcelData()" id="excel-clear-btn" style="display:none;font-size:11px;">✕ Xoá</button>
+                <button class="btn sm" onclick="clearExcelData()" id="excel-clear-btn" style="display:none;font-size:11px;">✕</button>
               </div>
-
-              <!-- Search by email -->
               <div id="excel-search-area" style="display:none;flex-direction:column;gap:6px;">
                 <div style="display:flex;gap:6px;">
-                  <input id="excel-search-email" placeholder="Email tự điền từ chuỗi email, hoặc nhập tay..." style="flex:1;font-size:12px;padding:7px 10px;" oninput="searchOrderByEmail(this.value)"/>
-                  <button class="btn sm" onclick="searchOrderByEmail(document.getElementById('excel-search-email').value)" style="white-space:nowrap;">🔍</button>
+                  <input id="excel-search-email" placeholder="Tìm theo email khách..." style="flex:1;font-size:12px;padding:6px 10px;" oninput="searchOrderByEmail(this.value)"/>
+                  <button class="btn sm" onclick="searchOrderByEmail(document.getElementById('excel-search-email').value)">🔍</button>
                 </div>
                 <div id="excel-search-result" style="display:none;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:10px;font-size:12px;"></div>
               </div>
+            </div>
 
-              <!-- Tracking number + link -->
+            <!-- BƯỚC 2: Chọn store -->
+            <div class="step-block">
+              <div class="step-header">
+                <div class="step-badge">2</div>
+                <div class="step-title">Chọn cửa hàng</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <select id="store-select" onchange="onStoreChange()" style="flex:1;padding:7px 10px;font-size:13px;">
+                  <option value="">-- Chọn cửa hàng --</option>
+                </select>
+                <div id="store-preview-mini" style="display:none;align-items:center;gap:6px;flex-shrink:0;">
+                  <div id="preview-logo" style="width:28px;height:28px;border-radius:6px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;">?</div>
+                  <div>
+                    <div id="preview-name" style="font-size:12px;font-weight:500;line-height:1.2;"></div>
+                    <div id="preview-email" style="font-size:10px;color:var(--muted);"></div>
+                  </div>
+                  <span class="tag tag-green" id="preview-tone" style="font-size:10px;"></span>
+                </div>
+              </div>
+              <!-- Hidden for compat -->
+              <div id="store-preview" class="hidden"></div>
+            </div>
+
+            <!-- BƯỚC 3: Inbox -->
+            <div class="step-block" id="step-inbox-block" style="display:none;">
+              <div class="step-header">
+                <div class="step-badge">3</div>
+                <div class="step-title">Chọn email cần xử lý</div>
+                <div style="display:flex;gap:6px;align-items:center;margin-left:auto;">
+                  <div id="inbox-status" class="status-pill" style="font-size:10px;padding:2px 8px;">
+                    <div class="dot"></div> Chưa tải
+                  </div>
+                  <button class="btn sm" onclick="loadInbox()" id="inbox-refresh-btn" style="font-size:11px;">⟳</button>
+                </div>
+              </div>
+              <div id="inbox-list" style="display:flex;flex-direction:column;gap:4px;max-height:280px;overflow-y:auto;"></div>
+            </div>
+
+            <!-- BƯỚC 4: Tracking -->
+            <div class="step-block" id="step-tracking-block">
+              <div class="step-header">
+                <div class="step-badge">4</div>
+                <div class="step-title">Tra cứu tracking (tuỳ chọn)</div>
+              </div>
               <div style="display:flex;gap:6px;">
-                <input id="tracking-number" placeholder="Tracking number (tự điền hoặc nhập tay)..." style="flex:1;font-size:12px;padding:7px 10px;font-family:var(--mono);" oninput="updateTrackingLink()"/>
-                <button class="btn sm" onclick="openTracking()" style="white-space:nowrap;">🔍 17track</button>
+                <input id="tracking-number" placeholder="Tracking number (tự điền từ Excel hoặc nhập tay)..." style="flex:1;font-size:12px;padding:6px 10px;font-family:var(--mono);" oninput="updateTrackingLink()"/>
+                <button class="btn sm" onclick="openTracking()" style="white-space:nowrap;font-size:11px;">17track ↗</button>
               </div>
               <div id="tracking-link-row" class="hidden" style="display:flex;align-items:center;gap:6px;">
                 <span style="font-size:11px;color:var(--muted);">Link:</span>
                 <a id="tracking-link-display" href="#" target="_blank" style="font-size:11px;color:var(--accent);font-family:var(--mono);word-break:break-all;"></a>
               </div>
               <div>
-                <label style="margin-bottom:4px;">Paste kết quả tracking vào đây (sau khi tra cứu trên 17track)</label>
-                <textarea id="tracking-result" rows="2" style="resize:none;font-size:12px;font-family:var(--mono);" placeholder="VD: In Transit — Arrived Los Angeles CA, Jan 15. Est. delivery Jan 17-19"></textarea>
+                <label style="margin-bottom:3px;font-size:11px;color:var(--muted);">Paste kết quả tracking từ 17track</label>
+                <textarea id="tracking-result" rows="2" style="resize:none;font-size:11px;font-family:var(--mono);" placeholder="VD: In Transit — Los Angeles CA, Jan 15..."></textarea>
               </div>
             </div>
-            <button class="analyze-btn" id="analyze-btn" onclick="startAnalysis()">✦ Phân tích chuỗi email</button>
+
+            <!-- BƯỚC 5: Phân tích -->
+            <div class="step-block" style="border-bottom:none;">
+              <div class="step-header">
+                <div class="step-badge">5</div>
+                <div class="step-title">Phân tích email</div>
+                <span id="email-source-badge" style="font-size:11px;color:var(--accent2);display:none;margin-left:auto;">✓ Lấy từ inbox</span>
+              </div>
+              <div id="email-input-area" style="display:flex;flex-direction:column;gap:6px;">
+                <textarea class="email-input" id="customer-email" style="min-height:100px;" placeholder="Email tự điền khi chọn từ inbox, hoặc dán thủ công..." onblur="autoLookupFromEmail()" onpaste="setTimeout(autoLookupFromEmail, 100)"></textarea>
+              </div>
+              <button class="analyze-btn" id="analyze-btn" onclick="startAnalysis()">✦ Phân tích chuỗi email</button>
+            </div>
+
+            <!-- Hidden inbox detail panel (used by JS) -->
+            <div id="inline-inbox" style="display:none;"></div>
+            <div id="inbox-detail-panel" style="display:none;flex-direction:column;"></div>
+            <div id="inbox-ai-summary" style="display:none;"></div>
+            <div id="inbox-body" style="display:none;"></div>
+            <div id="inbox-thread" style="display:none;"></div>
+            <div id="inbox-thread-list" style="display:none;"></div>
+            <div id="inbox-subject" style="display:none;"></div>
+            <div id="inbox-from" style="display:none;"></div>
+            <div id="inbox-date" style="display:none;"></div>
           </div>
 
           <!-- RIGHT: ANALYSIS OUTPUT -->
@@ -452,10 +458,31 @@ const CONFIG = {
               <span id="output-status" class="status-pill"><div class="dot"></div> Chờ email...</span>
             </div>
 
+            <!-- INBOX EMAIL DETAIL — hiện khi click email từ inbox -->
+            <div id="inbox-right-detail" style="display:none;flex-direction:column;gap:10px;">
+              <div style="border-bottom:1px solid var(--border);padding-bottom:10px;">
+                <div style="font-size:14px;font-weight:500;margin-bottom:5px;" id="inbox-subject"></div>
+                <div style="display:flex;gap:12px;font-size:12px;color:var(--muted);flex-wrap:wrap;">
+                  <span>Từ: <strong id="inbox-from" style="color:var(--text);"></strong></span>
+                  <span id="inbox-date"></span>
+                </div>
+              </div>
+              <div id="inbox-ai-summary" style="display:none;"></div>
+              <div id="inbox-body" style="font-size:12px;line-height:1.7;white-space:pre-wrap;max-height:200px;overflow-y:auto;color:var(--muted);background:var(--bg3);padding:10px;border-radius:var(--radius);"></div>
+              <div style="display:flex;gap:8px;">
+                <button class="btn sm" onclick="loadThread()" style="font-size:12px;">🔗 Xem thread</button>
+                <button onclick="processInboxEmail()" style="flex:1;padding:8px;border-radius:var(--radius);background:var(--accent);border:none;color:#fff;font-size:13px;font-weight:500;cursor:pointer;">✦ Xử lý email này</button>
+              </div>
+              <div id="inbox-thread" style="display:none;flex-direction:column;gap:5px;border-top:1px solid var(--border);padding-top:8px;">
+                <div style="font-size:11px;font-weight:500;color:var(--muted);">📨 Thread</div>
+                <div id="inbox-thread-list" style="max-height:250px;overflow-y:auto;display:flex;flex-direction:column;gap:5px;"></div>
+              </div>
+            </div>
+
             <div id="output-placeholder" style="flex:1;display:flex;align-items:center;justify-content:center;">
               <div class="draft-placeholder">
                 <div style="font-size:32px;margin-bottom:10px;">📭</div>
-                Chọn store & dán chuỗi email<br>rồi nhấn phân tích
+                Chọn store → inbox tự tải<br>Click email để xử lý
               </div>
             </div>
 
@@ -502,14 +529,7 @@ const CONFIG = {
                 ✉ Email gốc <span style="font-size:11px;color:var(--muted);">(ngôn ngữ khách)</span>
               </label>
               <div class="draft-box" id="draft-original" style="min-height:180px;"></div>
-              <div style="display:flex;gap:6px;">
-                <button class="copy-btn" onclick="copyDraft()" id="copy-btn" style="flex:1;">⎘ Copy</button>
-                <button id="send-btn" onclick="sendReplyEmail()"
-                  style="flex:2;padding:8px;border-radius:var(--radius);background:var(--accent2);border:none;color:#172f17;font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;">
-                  📤 Gửi email trực tiếp
-                </button>
-              </div>
-              <div id="send-status" style="font-size:12px;display:none;padding:6px 10px;border-radius:var(--radius);"></div>
+              <button class="copy-btn" onclick="copyDraft()" id="copy-btn">⎘ Copy email gốc — dán vào PrivateMail để gửi</button>
             </div>
             <div style="display:flex;flex-direction:column;gap:6px;">
               <label style="display:flex;align-items:center;gap:6px;">
@@ -970,33 +990,25 @@ function renderStoreSelect() {
 function onStoreChange() {
   const id = document.getElementById('store-select').value;
   selectedStore = stores.find(s => s.id === id) || null;
-  const preview = document.getElementById('store-preview');
-  const inlineInbox = document.getElementById('inline-inbox');
+  const miniPreview = document.getElementById('store-preview-mini');
+  const inboxBlock = document.getElementById('step-inbox-block');
   if (selectedStore) {
-    preview.classList.remove('hidden');
-    document.getElementById('preview-logo').textContent = selectedStore.name[0].toUpperCase();
-    document.getElementById('preview-name').textContent = selectedStore.name;
-    document.getElementById('preview-email').textContent = selectedStore.email || '(chưa có email)';
-    document.getElementById('preview-tone').textContent = selectedStore.tone || 'friendly';
-    // Show inline inbox and sync store
-    if (inlineInbox) {
-      inlineInbox.style.display = 'flex';
-      // Sync inbox store
-      inboxStore = selectedStore;
-      // Auto-load inbox
-      loadInbox();
-      // Collapse email input area until user processes an email
-      const emailArea = document.getElementById('email-input-area');
-      if (emailArea && !document.getElementById('customer-email').value.trim()) {
-        emailArea.style.display = 'none';
-      }
+    // Mini preview
+    if (miniPreview) {
+      miniPreview.style.display = 'flex';
+      document.getElementById('preview-logo').textContent = selectedStore.name[0].toUpperCase();
+      document.getElementById('preview-name').textContent = selectedStore.name;
+      document.getElementById('preview-email').textContent = selectedStore.email || '';
+      document.getElementById('preview-tone').textContent = selectedStore.tone || 'friendly';
     }
+    // Show inbox step
+    if (inboxBlock) inboxBlock.style.display = 'block';
+    // Sync inbox store and load
+    inboxStore = selectedStore;
+    loadInbox();
   } else {
-    preview.classList.add('hidden');
-    if (inlineInbox) inlineInbox.style.display = 'none';
-    document.getElementById('inbox-detail-panel').style.display = 'none';
-    const emailArea = document.getElementById('email-input-area');
-    if (emailArea) emailArea.style.display = 'flex';
+    if (miniPreview) miniPreview.style.display = 'none';
+    if (inboxBlock) inboxBlock.style.display = 'none';
   }
 }
 
@@ -1404,7 +1416,8 @@ async function openInboxEmail(idx) {
   document.getElementById('inbox-body').textContent = (email.text || '').slice(0, 400) + ((email.text||'').length > 400 ? '...' : '');
 
   // AI quick summary
-  const summaryEl = document.getElementById('inbox-ai-summary');
+  const rightPanel = document.getElementById('inbox-right-detail');
+  const summaryEl = rightPanel ? rightPanel.querySelector('#inbox-ai-summary') : document.getElementById('inbox-ai-summary');
   if (summaryEl) {
     summaryEl.style.display = 'block';
     summaryEl.innerHTML = '<span style="color:var(--muted);font-size:11px;">⏳ Đang tóm tắt...</span>';
@@ -1423,6 +1436,7 @@ async function openInboxEmail(idx) {
       const data = await res.json();
       const summary = data.content?.[0]?.text || '';
       summaryEl.innerHTML = `<div style="font-size:12px;line-height:1.6;color:var(--text);padding:8px 10px;background:var(--bg3);border-radius:6px;border-left:3px solid var(--accent2);">${summary.replace(/\n/g,'<br>')}</div>`;
+      summaryEl.style.display = 'block';
     } catch(e) {
       summaryEl.innerHTML = '';
     }
@@ -1430,11 +1444,10 @@ async function openInboxEmail(idx) {
 }
 
 function closeInboxDetail() {
-  document.getElementById('inbox-detail-panel').style.display = 'none';
-  document.getElementById('inbox-ai-summary').style.display = 'none';
-  document.getElementById('inbox-ai-summary').innerHTML = '';
+  const rightPanel = document.getElementById('inbox-right-detail');
+  if (rightPanel) rightPanel.style.display = 'none';
   document.querySelectorAll('.inbox-card').forEach(c => c.classList.remove('active'));
-  // NOT marking seen — email stays bold until staff processes it
+  document.getElementById('output-placeholder').classList.remove('hidden');
 }
 
 async function loadThread() {
