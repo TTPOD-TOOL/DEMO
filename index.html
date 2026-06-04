@@ -247,7 +247,7 @@ const CONFIG = {
       <div class="content" style="padding:0;overflow:hidden;height:calc(100vh - 65px);">
 
         <!-- ══ REPLY MODE ══ -->
-        <div id="mode-reply" style="display:grid;grid-template-columns:380px 1fr;height:100%;">
+        <div id="mode-reply" style="display:grid;grid-template-columns:460px 1fr;height:100%;">
 
           <!-- LEFT PANEL -->
           <div style="border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column;">
@@ -337,7 +337,7 @@ const CONFIG = {
           </div><!-- end left -->
 
           <!-- RIGHT PANEL -->
-          <div id="right-panel" style="overflow-y:auto;display:flex;flex-direction:column;">
+          <div id="right-panel" style="overflow-y:auto;display:flex;flex-direction:column;background:var(--bg2);">
 
             <!-- STATE: placeholder -->
             <div id="state-placeholder" style="flex:1;display:flex;align-items:center;justify-content:center;">
@@ -1919,13 +1919,15 @@ function renderOrderResults(matches) {
     const fields = excelHeaders.filter(h => row[h] && keyPat.some(p=>p.test(h))).slice(0,6);
     const displayFields = fields.length ? fields : excelHeaders.filter(h=>row[h]).slice(0,5);
     const fieldsHtml = displayFields.map(h=>
-      `<div class="order-card-field">${h}: <span>${row[h]}</span></div>`
-    ).join('');
-    return `<div class="order-card">
-      ${fieldsHtml}
-      <div style="margin-top:6px;display:flex;align-items:center;justify-content:space-between;">
-        ${tv ? `<span style="font-size:11px;color:var(--accent2);">🔗 ${tv}</span>` : '<span style="font-size:11px;color:var(--warn);">⏳ Chưa có tracking</span>'}
-        <button onclick="applyOrder(${i})" class="btn sm primary" style="font-size:11px;">✓ Chọn</button>
+      `<span style="color:var(--muted);font-size:11px;">${h}:</span> <span style="font-size:12px;font-weight:500;">${row[h]}</span>`
+    ).join(' &nbsp;·&nbsp; ');
+    return `<div style="padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--bg3);">
+      <div style="display:flex;align-items:flex-start;gap:10px;">
+        <div style="flex:1;font-size:12px;line-height:1.8;">${fieldsHtml}</div>
+        <div style="flex-shrink:0;text-align:right;">
+          ${tv ? `<div style="font-size:11px;color:var(--accent2);margin-bottom:4px;">🔗 ${tv}</div>` : `<div style="font-size:11px;color:var(--warn);margin-bottom:4px;">⏳ Chưa có tracking</div>`}
+          <button onclick="applyOrder(${i})" style="padding:5px 12px;border-radius:6px;background:var(--accent);border:none;color:#fff;font-size:12px;cursor:pointer;font-family:var(--font);">✓ Chọn</button>
+        </div>
       </div>
     </div>`;
   }).join('') + (matches.length > 5 ? `<div style="font-size:11px;color:var(--muted);padding:4px;">...+${matches.length-5} đơn khác</div>` : '');
@@ -2040,15 +2042,15 @@ async function loadInbox() {
       document.getElementById('inbox-list').innerHTML = emails.map((e,i) => {
         const from = e.from?.replace(/<.*>/,'').trim() || e.from || 'Unknown';
         const date = new Date(e.date).toLocaleString('vi-VN',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-        return `<div class="inbox-card" onclick="openEmail(${i})" id="ic-${i}">
+        return `<div class="inbox-card" onclick="openEmail(${i})" id="ic-${i}" style="border-left:3px solid var(--accent);">
           <div class="inbox-meta">
-            <div class="inbox-from" style="font-weight:600;color:var(--text);">
-              <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-right:5px;vertical-align:middle;"></span>${from}
+            <div class="inbox-from" style="font-weight:600;color:var(--text);display:flex;align-items:center;gap:5px;">
+              <span style="width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0;display:inline-block;"></span>${from}
             </div>
             <div class="inbox-time">${date}</div>
           </div>
-          <div class="inbox-subj" style="font-weight:500;">${e.subject||'(no subject)'}</div>
-          <div class="inbox-snippet">${e.snippet||''}</div>
+          <div class="inbox-subj" style="font-weight:500;color:var(--text);margin-top:3px;">${e.subject||'(no subject)'}</div>
+          <div class="inbox-snippet" style="margin-top:2px;">${e.snippet||''}</div>
         </div>`;
       }).join('');
     }
