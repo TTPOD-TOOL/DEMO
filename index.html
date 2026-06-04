@@ -171,22 +171,10 @@
     .sidebar-logo,.nav-item span,.sidebar-label,.user-info{display:none;}
     .agent-grid,.admin-grid{grid-template-columns:1fr;}
   }
-
-  /* MODE BUTTONS */
-  .mode-btn{padding:5px 12px;border-radius:6px;border:none;font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;background:transparent;color:var(--muted);transition:all .15s;}
-  .mode-btn.active{background:var(--accent);color:#fff;}
-  /* STEP BLOCKS */
-  .step-blk{padding:14px 16px;border-bottom:1px solid var(--border);}
-  .step-blk:last-child{border-bottom:none;}
-  .step-hdr{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
-  .step-num{width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-  .step-lbl{font-size:12px;font-weight:600;color:var(--text);}
-  .upload-zone{border:1px dashed var(--border);border-radius:var(--radius);padding:10px 14px;font-size:12px;color:var(--muted);cursor:pointer;text-align:center;transition:border-color .15s;}
-  .upload-zone:hover{border-color:var(--accent);color:var(--text);}
-  .order-card{padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg3);}
-  .order-card-field{font-size:11px;color:var(--muted);margin-bottom:1px;}
-  .order-card-field span{color:var(--text);font-weight:500;}
 </style>
+</head>
+<body>
+
 <script>
 const CONFIG = {
   SUPABASE_URL: 'https://agormhbqxwkbojjxssay.supabase.co',
@@ -197,7 +185,6 @@ const CONFIG = {
   EMAIL_SECRET: 'PODToolkit2024SecretKey',
 };
 </script>
-
 
 <!-- LOGIN -->
 <div id="login-screen">
@@ -239,7 +226,7 @@ const CONFIG = {
 
   <div class="main">
 
-    
+
     <!-- EMAIL AGENT PAGE -->
     <!-- EMAIL AGENT PAGE -->
     <div id="page-email-agent">
@@ -535,12 +522,356 @@ const CONFIG = {
     </div><!-- end email-agent page -->
 
 
+    <!-- CREATIVE AGENT PAGE -->
+    <div id="page-creative" class="hidden">
+      <div class="topbar">
+        <div><div class="topbar-title">🎨 Creative Agent</div><div class="topbar-sub">Tạo prompt ảnh quảng cáo & ad copy cho Facebook/Instagram</div></div>
+        <div id="creative-status-badge" class="status-pill"><div class="dot"></div> Sẵn sàng</div>
+      </div>
+      <div class="content" style="display:flex;flex-direction:column;gap:14px;">
 
+        <div class="agent-grid">
+
+          <!-- LEFT: INPUT -->
+          <div class="panel">
+            <div class="panel-head">📥 Thông tin sản phẩm</div>
+            <div>
+              <label>Cửa hàng</label>
+              <select id="creative-store-select" onchange="onCreativeStoreChange()">
+                <option value="">-- Chọn cửa hàng --</option>
+              </select>
+            </div>
+
+            <div>
+              <label>Loại sản phẩm POD</label>
+              <select id="creative-product-type">
+                <option value="t-shirt">T-shirt</option>
+                <option value="hoodie">Hoodie</option>
+                <option value="mug">Mug</option>
+                <option value="tote-bag">Tote bag</option>
+                <option value="poster">Poster</option>
+                <option value="phone-case">Phone case</option>
+                <option value="other">Khác</option>
+              </select>
+            </div>
+
+            <div>
+              <label>Mô tả sản phẩm & design</label>
+              <textarea id="creative-description" rows="4" style="resize:none;font-size:13px;" placeholder="VD: Áo thun màu đen, in chữ 'Coffee is my love language' theo phong cách minimalist, font serif thanh lịch, dành cho người yêu cà phê..."></textarea>
+            </div>
+
+            <div>
+              <label>Upload ảnh sản phẩm (tuỳ chọn)</label>
+              <div id="creative-upload-area" style="border:1px dashed var(--border);border-radius:var(--radius);padding:16px;text-align:center;cursor:pointer;font-size:12px;color:var(--muted);" onclick="document.getElementById('creative-image-input').click()">
+                <div style="font-size:24px;margin-bottom:4px;">📷</div>
+                Click để upload ảnh sản phẩm
+                <input type="file" id="creative-image-input" accept="image/*" style="display:none" onchange="onCreativeImageUpload(this)"/>
+              </div>
+              <div id="creative-image-preview" class="hidden" style="margin-top:8px;position:relative;">
+                <img id="creative-preview-img" style="width:100%;max-height:160px;object-fit:contain;border-radius:var(--radius);border:1px solid var(--border);" />
+                <button onclick="removeCreativeImage()" style="position:absolute;top:4px;right:4px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:12px;">✕</button>
+              </div>
+            </div>
+
+            <div>
+              <label>Mục tiêu quảng cáo</label>
+              <select id="creative-goal">
+                <option value="awareness">Brand awareness — tăng nhận diện</option>
+                <option value="traffic">Traffic — kéo người vào store</option>
+                <option value="conversion">Conversion — thúc đẩy mua hàng</option>
+                <option value="engagement">Engagement — tương tác, like, share</option>
+              </select>
+            </div>
+
+            <div>
+              <label>Target audience</label>
+              <input id="creative-audience" placeholder="VD: Phụ nữ 25-40 tuổi, yêu cà phê, thích phong cách tối giản..." style="font-size:12px;"/>
+            </div>
+
+            <button class="analyze-btn" id="creative-btn" onclick="generateCreative()">✦ Tạo prompt & ad copy</button>
+          </div>
+
+          <!-- RIGHT: OUTPUT -->
+          <div class="panel">
+            <div class="panel-head" style="justify-content:space-between;">
+              <span>🤖 Kết quả từ Agent</span>
+              <span id="creative-output-status" class="status-pill"><div class="dot"></div> Chờ...</span>
+            </div>
+
+            <div id="creative-placeholder" style="flex:1;display:flex;align-items:center;justify-content:center;">
+              <div class="draft-placeholder">
+                <div style="font-size:32px;margin-bottom:10px;">🎨</div>
+                Điền thông tin sản phẩm<br>và nhấn tạo
+              </div>
+            </div>
+
+            <div id="creative-output" class="hidden" style="flex:1;display:flex;flex-direction:column;gap:12px;overflow-y:auto;">
+
+              <!-- IMAGE PROMPT -->
+              <div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                  <label>🖼 Prompt tạo ảnh (dùng cho Midjourney / Leonardo / Canva AI)</label>
+                  <button class="copy-btn" style="width:auto;padding:3px 10px;font-size:11px;" onclick="copyText('image-prompt-display')">⎘ Copy</button>
+                </div>
+                <div class="summary-box" id="image-prompt-display" style="font-family:var(--mono);font-size:11px;line-height:1.7;"></div>
+              </div>
+
+              <!-- NEGATIVE PROMPT -->
+              <div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                  <label>🚫 Negative prompt</label>
+                  <button class="copy-btn" style="width:auto;padding:3px 10px;font-size:11px;" onclick="copyText('negative-prompt-display')">⎘ Copy</button>
+                </div>
+                <div class="summary-box" id="negative-prompt-display" style="font-family:var(--mono);font-size:11px;line-height:1.7;color:var(--muted);"></div>
+              </div>
+
+              <div style="border-top:1px solid var(--border);padding-top:10px;">
+                <label style="margin-bottom:8px;display:block;">📢 Ad Copy cho Facebook/Instagram</label>
+
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                  <div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+                      <span style="font-size:11px;color:var(--muted);">Headline (tiêu đề)</span>
+                      <button class="copy-btn" style="width:auto;padding:2px 8px;font-size:11px;" onclick="copyText('ad-headline')">⎘</button>
+                    </div>
+                    <div class="summary-box" id="ad-headline" style="font-size:13px;font-weight:500;"></div>
+                  </div>
+                  <div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+                      <span style="font-size:11px;color:var(--muted);">Primary text</span>
+                      <button class="copy-btn" style="width:auto;padding:2px 8px;font-size:11px;" onclick="copyText('ad-primary')">⎘</button>
+                    </div>
+                    <div class="summary-box" id="ad-primary" style="font-size:12px;line-height:1.7;white-space:pre-wrap;"></div>
+                  </div>
+                  <div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+                      <span style="font-size:11px;color:var(--muted);">CTA button text</span>
+                      <button class="copy-btn" style="width:auto;padding:2px 8px;font-size:11px;" onclick="copyText('ad-cta')">⎘</button>
+                    </div>
+                    <div class="summary-box" id="ad-cta" style="font-size:12px;"></div>
+                  </div>
+                  <div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+                      <span style="font-size:11px;color:var(--muted);">Caption Instagram / Facebook post</span>
+                      <button class="copy-btn" style="width:auto;padding:2px 8px;font-size:11px;" onclick="copyText('ad-caption')">⎘</button>
+                    </div>
+                    <div class="summary-box" id="ad-caption" style="font-size:12px;line-height:1.7;white-space:pre-wrap;"></div>
+                  </div>
+                  <div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+                      <span style="font-size:11px;color:var(--muted);">Hashtags</span>
+                      <button class="copy-btn" style="width:auto;padding:2px 8px;font-size:11px;" onclick="copyText('ad-hashtags')">⎘</button>
+                    </div>
+                    <div class="summary-box" id="ad-hashtags" style="font-size:11px;color:var(--accent);line-height:1.8;"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="display:flex;gap:8px;margin-top:4px;">
+                <button class="btn" style="font-size:12px;" onclick="resetCreative()">↺ Tạo lại</button>
+                <button class="btn" style="font-size:12px;" onclick="generateVariant()">✦ Tạo thêm variant khác</button>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+        </div><!-- end reply-mode -->
+    </div>
+
+    <!-- HISTORY PAGE -->
+    <div id="page-history" class="hidden">
+      <div class="topbar"><div><div class="topbar-title">📋 Lịch sử</div><div class="topbar-sub">Email đã xử lý của bạn</div></div></div>
+      <div class="content"><div id="history-list" class="history-list"><div style="color:var(--muted)">Đang tải...</div></div></div>
+    </div>
+
+    <!-- ADMIN PAGE -->
+    <div id="page-admin" class="hidden">
+      <div class="topbar">
+        <div><div class="topbar-title">⚙ Admin Panel</div><div class="topbar-sub">Quản lý store, chính sách & nhân viên</div></div>
+      </div>
+      <div class="content">
+        <div class="tab-bar">
+          <div class="tab active" onclick="switchAdminTab('stores')" id="tab-stores">🏪 Cửa hàng</div>
+          <div class="tab" onclick="switchAdminTab('policy')" id="tab-policy">📜 Chính sách chung</div>
+          <div class="tab" onclick="switchAdminTab('scenarios')" id="tab-scenarios">🎯 Kịch bản</div>
+          <div class="tab" onclick="switchAdminTab('staff')" id="tab-staff">👥 Nhân viên</div>
+          <div class="tab" onclick="switchAdminTab('logs')" id="tab-logs">📊 Hoạt động</div>
+        </div>
+
+        <!-- STORES TAB -->
+        <div id="admin-tab-stores">
+          <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
+            <button class="btn primary" onclick="openStoreModal()">+ Thêm cửa hàng</button>
+          </div>
+          <div class="panel" style="height:auto;">
+            <table class="data-table">
+              <thead><tr><th>Tên cửa hàng</th><th>Email</th><th>Niche/Sản phẩm</th><th>Giọng văn</th><th>Hành động</th></tr></thead>
+              <tbody id="stores-table-body"><tr><td colspan="5" style="color:var(--muted)">Đang tải...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- POLICY TAB -->
+        <div id="admin-tab-policy" class="hidden">
+          <div class="policy-section">
+            <div class="policy-title">📜 Chính sách áp dụng cho tất cả cửa hàng</div>
+            <div class="modal-field">
+              <label>Chính sách Shipping</label>
+              <textarea id="policy-shipping" rows="5" placeholder="VD: Orders are processed within 2-3 business days. Standard shipping takes 7-14 business days. Express shipping available at checkout (3-5 business days)..."></textarea>
+            </div>
+            <div class="modal-field">
+              <label>Chính sách Đổi trả & Hoàn tiền</label>
+              <textarea id="policy-return" rows="5" placeholder="VD: We accept returns within 30 days of delivery for defective or wrong items. Customer must provide photos of the issue. Refunds processed within 5-7 business days..."></textarea>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;">
+              <button class="btn primary" onclick="savePolicy()">💾 Lưu chính sách</button>
+              <span class="save-indicator" id="policy-saved">✓ Đã lưu!</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- SCENARIOS TAB -->
+        <div id="admin-tab-scenarios" class="hidden">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+            <div style="font-size:13px;color:var(--muted);">Agent sẽ tự động nhận diện và áp dụng kịch bản phù hợp khi xử lý email.</div>
+            <button class="btn primary" onclick="openScenarioModal()">+ Thêm kịch bản</button>
+          </div>
+
+          <!-- Filter bar -->
+          <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+            <select id="scenario-filter-cat" onchange="renderScenarios()" style="width:auto;padding:6px 10px;font-size:12px;">
+              <option value="">Tất cả loại</option>
+              <option value="tracking">Tracking</option>
+              <option value="defective">Sản phẩm lỗi</option>
+              <option value="refund">Refund</option>
+              <option value="cancel">Huỷ đơn</option>
+              <option value="product_question">Hỏi trước mua</option>
+              <option value="other">Khác</option>
+            </select>
+            <select id="scenario-filter-sev" onchange="renderScenarios()" style="width:auto;padding:6px 10px;font-size:12px;">
+              <option value="">Tất cả mức độ</option>
+              <option value="normal">Bình thường</option>
+              <option value="frustrated">Lo lắng / khó chịu</option>
+              <option value="angry">Tức giận</option>
+            </select>
+          </div>
+
+          <div id="scenarios-list" style="display:flex;flex-direction:column;gap:10px;"></div>
+        </div>
+
+        <!-- STAFF TAB -->
+        <div id="admin-tab-staff" class="hidden">
+          <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
+            <button class="btn primary" onclick="openUserModal()">+ Thêm nhân viên</button>
+          </div>
+          <div class="panel" style="height:auto;">
+            <table class="data-table">
+              <thead><tr><th>Email</th><th>Vai trò</th><th>Ngày tạo</th><th>Đăng nhập lần cuối</th><th>Email đã xử lý</th><th>Hành động</th></tr></thead>
+              <tbody id="staff-table-body"><tr><td colspan="6" style="color:var(--muted)">Đang tải...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- LOGS TAB - DASHBOARD -->
+        <div id="admin-tab-logs" class="hidden">
+
+          <!-- Filter bar -->
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
+            <select id="dash-filter-days" onchange="renderDashboard()" style="width:auto;padding:6px 10px;font-size:12px;">
+              <option value="7">7 ngày qua</option>
+              <option value="30" selected>30 ngày qua</option>
+              <option value="90">3 tháng qua</option>
+              <option value="9999">Tất cả</option>
+            </select>
+            <select id="dash-filter-user" onchange="renderDashboard()" style="width:auto;padding:6px 10px;font-size:12px;">
+              <option value="">Tất cả nhân viên</option>
+            </select>
+            <span id="dash-last-updated" style="font-size:11px;color:var(--muted);margin-left:auto;"></span>
+          </div>
+
+          <!-- Stat cards -->
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;">
+            <div class="stat-card"><div class="stat-num" id="dash-total">—</div><div class="stat-label">Tổng email xử lý</div></div>
+            <div class="stat-card"><div class="stat-num" id="dash-today">—</div><div class="stat-label">Hôm nay</div></div>
+            <div class="stat-card"><div class="stat-num" id="dash-users">—</div><div class="stat-label">Nhân viên active</div></div>
+            <div class="stat-card"><div class="stat-num" id="dash-avg">—</div><div class="stat-label">TB email/người/ngày</div></div>
+          </div>
+
+          <!-- Row 1: Line chart (daily) + Pie chart (per user) -->
+          <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:14px;">
+            <div class="panel" style="height:auto;">
+              <div class="panel-head">📅 Email xử lý theo ngày</div>
+              <canvas id="chart-daily" height="120"></canvas>
+            </div>
+            <div class="panel" style="height:auto;">
+              <div class="panel-head">👥 Phân bổ theo nhân viên</div>
+              <canvas id="chart-user-pie" height="120"></canvas>
+            </div>
+          </div>
+
+          <!-- Row 2: Bar chart (hourly) -->
+          <div class="panel" style="height:auto;margin-bottom:14px;">
+            <div class="panel-head">⏰ Hoạt động theo giờ trong ngày</div>
+            <canvas id="chart-hourly" height="80"></canvas>
+          </div>
+
+          <!-- Row 3: User table with sparkline -->
+          <div class="panel" style="height:auto;">
+            <div class="panel-head">📊 Chi tiết theo nhân viên</div>
+            <table class="data-table">
+              <thead><tr><th>Nhân viên</th><th>Tổng</th><th>Hôm nay</th><th>Tuần này</th><th>Lần cuối dùng</th><th>% tổng</th></tr></thead>
+              <tbody id="dash-user-tbody"></tbody>
+            </table>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
 
   </div>
 </div>
 
+<!-- STORE MODAL -->
+<div id="store-modal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-title" id="store-modal-title">Thêm cửa hàng mới</div>
+    <input type="hidden" id="store-modal-id"/>
+    <div class="modal-field"><label>Tên cửa hàng *</label><input id="store-name" placeholder="VD: TRENDIFY"/></div>
+    <div class="modal-field"><label>Email cửa hàng</label><input id="store-email" placeholder="support@trendify.com"/></div>
+    <div class="modal-field"><label>Chữ ký email</label><textarea id="store-signature" rows="4" placeholder="VD: Best regards,&#10;Sarah — TRENDIFY Support Team&#10;support@trendify.com | trendify.com"></textarea></div>
+    <div class="modal-field"><label>Niche / Sản phẩm bán</label><input id="store-niche" placeholder="VD: Custom T-shirts, Hoodies, Mugs with funny quotes"/></div>
+    <div class="modal-field">
+      <label>Giọng văn khi trả lời</label>
+      <select id="store-tone">
+        <option value="friendly">Friendly — thân thiện, ấm áp</option>
+        <option value="professional">Professional — chuyên nghiệp, lịch sự</option>
+        <option value="casual">Casual — thoải mái, gần gũi</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeStoreModal()">Huỷ</button>
+      <button class="btn primary" onclick="saveStore()">Lưu cửa hàng</button>
+    </div>
+    <div class="err-msg hidden" id="store-modal-err"></div>
+  </div>
+</div>
 
+<!-- USER MODAL -->
+<div id="user-modal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-title">Thêm nhân viên mới</div>
+    <div class="modal-field"><label>Email</label><input type="email" id="new-user-email" placeholder="nhanvien@email.com"/></div>
+    <div class="modal-field"><label>Mật khẩu tạm</label><input type="text" id="new-user-pass" placeholder="Tối thiểu 6 ký tự"/></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeUserModal()">Huỷ</button>
+      <button class="btn primary" onclick="addUser()">Tạo tài khoản</button>
+    </div>
+    <div class="err-msg hidden" id="user-modal-err"></div>
+  </div>
+</div>
 
 <script>
 const {createClient} = supabase;
@@ -575,8 +906,6 @@ async function bootApp(user) {
   if (currentRole === 'admin') document.getElementById('admin-nav').classList.remove('hidden');
   await loadStores();
   await loadGlobalPolicy();
-  await loadScenarios();
-  renderStores();
   showPage('email-agent');
 }
 
@@ -626,19 +955,15 @@ async function loadStores() {
 }
 
 function renderStoreSelect() {
-  // v7 compat
   const sel = document.getElementById('store-select');
   if (sel) sel.innerHTML = '<option value="">-- Chọn cửa hàng --</option>' +
     stores.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-}
-
-function renderStores() {
-  // v8 Email Agent
-  const sel = document.getElementById('store-sel');
-  if (sel) sel.innerHTML = '<option value="">-- Chọn cửa hàng --</option>' +
+  // Also update v8 Email Agent store selector
+  const sel2 = document.getElementById('store-sel');
+  if (sel2) sel2.innerHTML = '<option value="">-- Chọn cửa hàng --</option>' +
     stores.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+  // Outbound store
   renderOutStores();
-  renderCreativeStores();
 }
 
 function onStoreChange() {
@@ -1445,9 +1770,7 @@ function openTracking() {
   window.open(url, '_blank');
 }
 
-
-
-// ── EMAIL AGENT v8 ───────────────────────────────────
+// ── EMAIL AGENT v8 ─────────────────────────────────
 // ══ EMAIL AGENT v8 — Clean rewrite ══════════════════
 
 // ── State ────────────────────────────────────────────
@@ -1461,7 +1784,8 @@ let EA = {
   orderInfo: null,
 };
 
-// ── Category config ───────────────────────────────────
+// ── Category config (uses existing CAT from v7) ──────
+
 // ── Helpers ───────────────────────────────────────────
 function setAgentBadge(txt, active=false) {
   const b = document.getElementById('agent-badge');
@@ -1518,7 +1842,6 @@ function setMode(mode) {
 }
 
 // ── Excel / Order lookup ──────────────────────────────
-
 function loadExcel(input) {
   const file = input.files[0];
   if (!file) return;
@@ -2151,7 +2474,6 @@ function resetOutbound() {
 
 
 
-// ── OTHER AGENTS ─────────────────────────────────────
 // ── CREATIVE AGENT ───────────────────────────────────
 let creativeImageBase64 = null;
 let creativeImageMediaType = 'image/jpeg';
@@ -2889,7 +3211,68 @@ async function addUser() {
   await loadAdminData(); // Refresh staff list
   alert(`✓ Đã tạo tài khoản cho ${email}!\nNhân viên có thể đăng nhập ngay.`);
 }
-
 </script>
+
+<!-- SCENARIO MODAL -->
+<div id="scenario-modal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:540px;">
+    <div class="modal-title" id="scenario-modal-title">Thêm kịch bản mới</div>
+    <input type="hidden" id="scenario-modal-id"/>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="modal-field">
+        <label>Loại vấn đề *</label>
+        <select id="scenario-category">
+          <option value="tracking">Tracking đơn hàng</option>
+          <option value="defective">Sản phẩm lỗi/sai</option>
+          <option value="refund">Refund & Return</option>
+          <option value="cancel">Huỷ đơn hàng</option>
+          <option value="shipping">Thời gian giao hàng</option>
+          <option value="product_question">Hỏi trước mua</option>
+          <option value="other">Khác</option>
+        </select>
+      </div>
+      <div class="modal-field">
+        <label>Mức độ bức xúc *</label>
+        <select id="scenario-severity">
+          <option value="normal">😊 Bình thường</option>
+          <option value="frustrated">😟 Lo lắng / khó chịu</option>
+          <option value="angry">😡 Tức giận / đe dọa</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-field">
+      <label>Tên kịch bản *</label>
+      <input id="scenario-title" placeholder="VD: Khách chờ lâu, đòi refund gấp"/>
+    </div>
+    <div class="modal-field">
+      <label>Mô tả tình huống</label>
+      <textarea id="scenario-description" rows="2" style="resize:none;font-size:12px;" placeholder="VD: Đơn hàng quá 14 ngày, khách liên hệ nhiều lần, tracking không cập nhật..."></textarea>
+    </div>
+    <div class="modal-field">
+      <label>Hướng xử lý (Agent sẽ học theo đây) *</label>
+      <textarea id="scenario-handling" rows="4" style="resize:none;font-size:12px;" placeholder="VD: Xin lỗi chân thành ngay đầu email. Kiểm tra tracking và cung cấp thông tin cụ thể. Nếu tracking không cập nhật 5+ ngày: đề xuất refund toàn bộ HOẶC gửi lại để khách chọn. Không yêu cầu khách chờ thêm."></textarea>
+    </div>
+    <div class="modal-field">
+      <label>Giọng điệu email</label>
+      <select id="scenario-tone">
+        <option value="friendly">Friendly — thân thiện, ấm áp</option>
+        <option value="empathetic">Empathetic — đồng cảm, thấu hiểu</option>
+        <option value="apologetic">Apologetic — xin lỗi chân thành</option>
+        <option value="enthusiastic">Enthusiastic — nhiệt tình, hào hứng</option>
+        <option value="professional">Professional — chuyên nghiệp, lịch sự</option>
+      </select>
+    </div>
+    <div class="modal-field">
+      <label>Câu/từ khoá nhận diện (mỗi dòng 1 câu)</label>
+      <textarea id="scenario-phrases" rows="3" style="resize:none;font-size:12px;" placeholder="VD:&#10;I want a refund&#10;This is unacceptable&#10;I'm opening a dispute"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeScenarioModal()">Huỷ</button>
+      <button class="btn primary" onclick="saveScenario()">Lưu kịch bản</button>
+    </div>
+    <div class="err-msg hidden" id="scenario-modal-err"></div>
+  </div>
+</div>
+
 </body>
 </html>
