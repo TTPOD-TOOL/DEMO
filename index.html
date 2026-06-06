@@ -357,13 +357,7 @@ const CONFIG = {
                 </label>
                 <button class="btn sm" onclick="clearExcelData()" id="excel-clear-btn" style="display:none;font-size:11px;">✕</button>
               </div>
-              <div id="excel-search-area" style="display:none;flex-direction:column;gap:6px;">
-                <div style="display:flex;gap:6px;">
-                  <input id="excel-search-email" placeholder="Tìm theo email khách..." style="flex:1;font-size:12px;padding:6px 10px;" oninput="searchOrderByEmail(this.value)"/>
-                  <button class="btn sm" onclick="searchOrderByEmail(document.getElementById('excel-search-email').value)">🔍</button>
-                </div>
-                <div id="excel-search-result" style="display:none;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:10px;font-size:12px;"></div>
-              </div>
+
             </div>
 
             <!-- BƯỚC 2: Chọn store -->
@@ -403,6 +397,18 @@ const CONFIG = {
                   placeholder="Dán toàn bộ chuỗi email vào đây, bao gồm cả các email cũ...&#10;&#10;VD:&#10;--- Email 1 (3 ngày trước) ---&#10;Customer: Hi, I ordered #1234 but haven't received it...&#10;&#10;--- Email 2 (2 ngày trước) ---&#10;Store: Hi! We are checking on your order...&#10;&#10;--- Email 3 (hôm nay) ---&#10;Customer: Still no update, I want a refund!" 
                   onblur="autoLookupFromEmail()" onpaste="setTimeout(autoLookupFromEmail, 100)"></textarea>
               </div>
+            </div>
+
+            <!-- Kết quả tìm đơn hàng — hiện giữa bước 3 và 4 -->
+            <div id="order-result-block" style="display:none;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg3);">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+                <span style="font-size:12px;font-weight:600;color:var(--accent2);">📦 Đơn hàng tìm thấy</span>
+                <input id="excel-search-email" placeholder="Tìm email khác..." style="flex:1;font-size:11px;padding:4px 8px;margin-left:auto;max-width:200px;" oninput="searchOrderByEmail(this.value)"/>
+                <button class="btn sm" onclick="searchOrderByEmail(document.getElementById('excel-search-email').value)" style="font-size:11px;">🔍</button>
+              </div>
+              <div id="excel-search-result" style="display:block;font-size:12px;"></div>
+              <!-- Keep compat -->
+              <div id="excel-search-area" style="display:none;"></div>
             </div>
 
             <!-- BƯỚC 4: Tracking -->
@@ -1086,7 +1092,7 @@ async function loadExcelFile(input) {
     status.textContent = `✓ ${rows.length} đơn hàng · ${excelHeaders.length} cột`;
     status.style.color = 'var(--accent2)';
     document.getElementById('excel-drop-label').textContent = `✓ ${file.name} (${rows.length} dòng)`;
-    document.getElementById('excel-search-area').style.display = 'flex';
+    document.getElementById('order-result-block').style.display = 'block';
     document.getElementById('excel-clear-btn').style.display = 'block';
   } catch(e) {
     status.textContent = 'Lỗi đọc file: ' + e.message;
@@ -1098,8 +1104,7 @@ function autoLookupFromEmail() {
   const emailText = document.getElementById('customer-email').value;
   if (!emailText || excelData.length === 0) return;
   // Show excel search area
-  document.getElementById('excel-search-area').style.display = 'flex';
-  document.getElementById('excel-upload-wrap') && (document.getElementById('excel-upload-wrap').style.display = 'none');
+  document.getElementById('order-result-block').style.display = 'block';
 
   const emailRegex = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
   const allEmails = [...new Set(emailText.match(emailRegex) || [])];
@@ -1143,12 +1148,12 @@ function autoLookupFromEmail() {
   if (!allMatches.length) return;
 
   document.getElementById('excel-search-email').value = customerEmails[0];
-  document.getElementById('excel-search-area').style.display = 'flex';
+  document.getElementById('order-result-block').style.display = 'block';
 
   const resultEl = document.getElementById('excel-search-result');
   window._allMatches = allMatches;
   resultEl.style.display = 'block';
-  resultEl.style.maxHeight = '280px';
+  resultEl.style.maxHeight = '260px';
   resultEl.style.overflowY = 'auto';
 
   const count = allMatches.length;
@@ -1340,8 +1345,7 @@ function clearExcelData() {
   excelData = []; excelHeaders = [];
   document.getElementById('excel-file-input').value = '';
   document.getElementById('excel-drop-label').textContent = '📂 Upload file Excel / CSV đơn hàng';
-  document.getElementById('excel-search-area').style.display = 'none';
-  document.getElementById('excel-search-result').style.display = 'none';
+  document.getElementById('order-result-block').style.display = 'none';
   document.getElementById('excel-clear-btn').style.display = 'none';
   document.getElementById('excel-status').textContent = '';
   document.getElementById('excel-search-email').value = '';
@@ -1909,7 +1913,7 @@ function resetAgent() {
   document.getElementById('tracking-result').value = '';
   document.getElementById('tracking-link-row').classList.add('hidden');
   document.getElementById('excel-search-email').value = '';
-  document.getElementById('excel-search-result').style.display = 'none';
+  document.getElementById('order-result-block').style.display = 'none';
   if (agentState) agentState.orderInfo = null;
   document.getElementById('output-placeholder').classList.remove('hidden');
   document.getElementById('output-analysis').classList.add('hidden');
