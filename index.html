@@ -389,10 +389,26 @@ const CONFIG = {
               <div id="store-preview" class="hidden"></div>
             </div>
 
+            <!-- BƯỚC 3: Dán email -->
+            <div class="step-block">
+              <div class="step-header">
+                <div class="step-badge">3</div>
+                <div class="step-title">Dán chuỗi email khách hàng</div>
+              </div>
+              <div id="email-input-area" style="display:flex;flex-direction:column;gap:8px;">
+                <label style="font-size:12px;color:var(--muted);">
+                  Copy toàn bộ chuỗi email từ PrivateMail (từ cũ đến mới nhất) rồi dán vào đây:
+                </label>
+                <textarea class="email-input" id="customer-email" style="min-height:200px;" 
+                  placeholder="Dán toàn bộ chuỗi email vào đây, bao gồm cả các email cũ...&#10;&#10;VD:&#10;--- Email 1 (3 ngày trước) ---&#10;Customer: Hi, I ordered #1234 but haven't received it...&#10;&#10;--- Email 2 (2 ngày trước) ---&#10;Store: Hi! We are checking on your order...&#10;&#10;--- Email 3 (hôm nay) ---&#10;Customer: Still no update, I want a refund!" 
+                  onblur="autoLookupFromEmail()" onpaste="setTimeout(autoLookupFromEmail, 100)"></textarea>
+              </div>
+            </div>
+
             <!-- BƯỚC 4: Tracking -->
             <div class="step-block" id="step-tracking-block">
               <div class="step-header">
-                <div class="step-badge">3</div>
+                <div class="step-badge">4</div>
                 <div class="step-title">Tra cứu tracking (tuỳ chọn)</div>
               </div>
               <div style="display:flex;gap:6px;">
@@ -414,15 +430,7 @@ const CONFIG = {
               <div class="step-header">
                 <div class="step-badge">5</div>
                 <div class="step-title">Phân tích email</div>
-                <span id="email-source-badge" style="font-size:11px;color:var(--accent2);display:none;margin-left:auto;">✓ Lấy từ inbox</span>
-              </div>
-              <div id="email-input-area" style="display:flex;flex-direction:column;gap:8px;">
-                <label style="font-size:12px;color:var(--muted);">
-                  Copy toàn bộ chuỗi email từ PrivateMail (từ email đầu tiên đến mới nhất) rồi dán vào đây:
-                </label>
-                <textarea class="email-input" id="customer-email" style="min-height:180px;" 
-                  placeholder="Dán toàn bộ chuỗi email vào đây, bao gồm cả các email cũ...&#10;&#10;VD:&#10;--- Email 1 (3 ngày trước) ---&#10;Customer: Hi, I ordered #1234 but haven't received it...&#10;&#10;--- Email 2 (2 ngày trước) ---&#10;Store: Hi! We are checking on your order...&#10;&#10;--- Email 3 (hôm nay) ---&#10;Customer: Still no update, I want a refund!" 
-                  onblur="autoLookupFromEmail()" onpaste="setTimeout(autoLookupFromEmail, 100)"></textarea>
+                <span id="email-source-badge" style="font-size:11px;color:var(--accent2);display:none;margin-left:auto;"></span>
               </div>
               <button class="analyze-btn" id="analyze-btn" onclick="startAnalysis()">✦ Phân tích chuỗi email</button>
             </div>
@@ -1089,6 +1097,9 @@ async function loadExcelFile(input) {
 function autoLookupFromEmail() {
   const emailText = document.getElementById('customer-email').value;
   if (!emailText || excelData.length === 0) return;
+  // Show excel search area
+  document.getElementById('excel-search-area').style.display = 'flex';
+  document.getElementById('excel-upload-wrap') && (document.getElementById('excel-upload-wrap').style.display = 'none');
 
   const emailRegex = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
   const allEmails = [...new Set(emailText.match(emailRegex) || [])];
@@ -1182,20 +1193,29 @@ function selectOrderByIndex(idx) {
   if (!row) { console.warn('No row at idx', idx); return; }
   const trackCol = excelHeaders.find(h => /track/i.test(h));
   const trackVal = (trackCol && row[trackCol]) ? String(row[trackCol]).trim() : '';
-  // Fill tracking
+  // Fill tracking number
   const tnInput = document.getElementById('tracking-number');
-  if (tnInput) { tnInput.value = trackVal; updateTrackingLink(); }
-  // Store order info
+  if (tnInput) {
+    tnInput.value = trackVal;
+    updateTrackingLink();
+  }
+  // Store order info for agent
   agentState = agentState || {};
   agentState.orderInfo = Object.entries(row).filter(([k,v]) => v).map(([k,v]) => k+': '+v).join('\n');
-  // Show email area
-  const ea = document.getElementById('email-input-area');
-  if (ea) ea.style.display = 'flex';
   // Update result display
-  document.getElementById('excel-search-result').innerHTML =
-    `<div style="color:var(--accent2);font-size:12px;padding:6px 0;">✓ Đã chọn đơn${trackVal?' — Tracking: <strong>'+trackVal+'</strong>':' — chưa có tracking'}</div>`;
-  // Scroll tracking into view
-  if (tnInput) setTimeout(() => tnInput.scrollIntoView({behavior:'smooth',block:'nearest'}), 100);
+  const keyPat = [/name|tên/i,/order|đơn/i,/track/i,/product|sản phẩm/i,/size/i,/store/i];
+  const showFields = excelHeaders.filter(h => row[h] && keyPat.some(p=>p.test(h))).slice(0,6);
+  const displayFields = showFields.length ? showFields : excelHeaders.filter(h=>row[h]).slice(0,6);
+  const fields = displayFields.map(h =>
+    `<span style="color:var(--muted);font-size:11px;">${h}:</span> <span style="font-size:12px;font-weight:500;">${row[h]}</span>`
+  ).join(' · ');
+  const resEl = document.getElementById('excel-search-result');
+  if (resEl) resEl.innerHTML = `
+    <div style="color:var(--accent2);font-size:12px;margin-bottom:6px;">
+      ✓ Đã chọn đơn${trackVal ? ' — Tracking: <strong>' + trackVal + '</strong>' : ' — chưa có tracking'}
+      <button onclick="autoLookupFromEmail()" style="margin-left:8px;font-size:11px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--muted);padding:2px 6px;cursor:pointer;">Xem lại</button>
+    </div>
+    <div style="padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;line-height:1.8;">${fields}</div>`;
 }
 
 function selectOrder(trackVal, row) {
