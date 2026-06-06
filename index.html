@@ -181,8 +181,6 @@ const CONFIG = {
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFnb3JtaGJxeHdrYm9qanhzc2F5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwODE3MjUsImV4cCI6MjA5NTY1NzcyNX0.IkFtUMCnpYvHFuPEIEUS7Dy0ELFnA6V4ail76ZpDu7U',
   WORKER_URL: 'https://solitary-surf-52e3.trinhdxbk56.workers.dev',
   ADMIN_EMAIL: 'trinhdxbk56@yahoo.com',
-  EMAIL_SERVER: 'https://pod-email-server-production.up.railway.app',
-  EMAIL_SECRET: 'PODToolkit2024SecretKey',
 };
 </script>
 
@@ -226,300 +224,330 @@ const CONFIG = {
 
   <div class="main">
 
-
     <!-- EMAIL AGENT PAGE -->
+
     <!-- EMAIL AGENT PAGE -->
     <div id="page-email-agent">
       <div class="topbar">
         <div>
           <div class="topbar-title">✉ Email Agent</div>
-          <div class="topbar-sub" id="ea-sub">Chọn store → inbox tự tải → click email → agent xử lý</div>
+          <div class="topbar-sub" id="email-agent-sub">Chọn store → dán chuỗi email → agent phân tích & soạn phản hồi</div>
         </div>
-        <div style="display:flex;gap:6px;align-items:center;">
-          <div style="display:flex;gap:3px;background:var(--bg3);padding:3px;border-radius:8px;border:1px solid var(--border);">
-            <button id="mode-reply-btn" onclick="setMode('reply')" class="mode-btn active">↩ Trả lời</button>
-            <button id="mode-out-btn" onclick="setMode('outbound')" class="mode-btn">✉ Chủ động</button>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="display:flex;gap:4px;background:var(--bg3);padding:3px;border-radius:8px;border:1px solid var(--border);">
+            <button id="mode-reply-btn" onclick="switchEmailMode('reply')" style="padding:5px 12px;border-radius:6px;border:none;font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;background:var(--accent);color:#fff;transition:all .15s;">↩ Trả lời</button>
+            <button id="mode-outbound-btn" onclick="switchEmailMode('outbound')" style="padding:5px 12px;border-radius:6px;border:none;font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;background:transparent;color:var(--muted);transition:all .15s;">✉ Chủ động</button>
           </div>
-          <div id="agent-badge" class="status-pill"><div class="dot"></div> Sẵn sàng</div>
+          <div id="step-indicator" class="status-pill">Bước 1 — Chờ email</div>
+          <div id="agent-status-badge" class="status-pill"><div class="dot"></div> Sẵn sàng</div>
         </div>
       </div>
+      <div class="content" style="display:flex;flex-direction:column;gap:14px;">
 
-      <div class="content" style="padding:0;overflow:hidden;height:calc(100vh - 65px);">
+        <!-- OUTBOUND EMAIL MODE -->
+        <div id="outbound-mode" style="display:none;">
+          <div class="agent-grid">
 
-        <!-- ══ REPLY MODE ══ -->
-        <div id="mode-reply" style="display:grid;grid-template-columns:460px 1fr;height:100%;">
-
-          <!-- LEFT PANEL -->
-          <div style="border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column;">
-
-            <!-- STEP 1: Upload Excel -->
-            <div class="step-blk">
-              <div class="step-hdr">
-                <span class="step-num" id="s1-num">1</span>
-                <span class="step-lbl">File đơn hàng</span>
-                <span id="excel-stat" style="margin-left:auto;font-size:11px;color:var(--accent2);"></span>
-              </div>
-              <div id="excel-upload-wrap">
-                <label style="margin:0;display:block;">
-                  <div id="excel-zone" class="upload-zone" onclick="document.getElementById('excel-input').click()">📂 Upload Excel / CSV đơn hàng</div>
-                  <input type="file" id="excel-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="loadExcel(this)"/>
-                </label>
-              </div>
-              <div id="excel-loaded" style="display:none;flex-direction:column;gap:6px;">
-                <div style="display:flex;gap:6px;">
-                  <input id="excel-search" placeholder="Tìm theo email khách..." style="flex:1;font-size:12px;padding:6px 10px;" oninput="searchOrder(this.value)"/>
-                  <button class="btn sm" onclick="clearExcel()">✕</button>
-                </div>
-                <div id="order-results" style="display:none;max-height:160px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;"></div>
-              </div>
-            </div>
-
-            <!-- STEP 2: Store -->
-            <div class="step-blk">
-              <div class="step-hdr">
-                <span class="step-num" id="s2-num">2</span>
-                <span class="step-lbl">Cửa hàng</span>
-              </div>
-              <div style="display:flex;gap:8px;align-items:center;">
-                <select id="store-sel" onchange="onStoreChange()" style="flex:1;padding:7px 10px;font-size:13px;">
+            <!-- LEFT: OUTBOUND INPUT -->
+            <div class="panel">
+              <div class="panel-head">✉ Thông tin email chủ động</div>
+              <div>
+                <label>Cửa hàng</label>
+                <select id="outbound-store-select" onchange="onOutboundStoreChange()">
                   <option value="">-- Chọn cửa hàng --</option>
                 </select>
-                <div id="store-badge" style="display:none;align-items:center;gap:6px;flex-shrink:0;">
-                  <div id="store-icon" style="width:28px;height:28px;border-radius:6px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;"></div>
-                  <div>
-                    <div id="store-name-txt" style="font-size:12px;font-weight:500;line-height:1.2;"></div>
-                    <div id="store-tone-txt" style="font-size:10px;color:var(--muted);"></div>
+              </div>
+              <div>
+                <label>Email khách hàng *</label>
+                <input id="outbound-customer-email" placeholder="customer@email.com" style="font-size:13px;" oninput="autoLookupOutbound(this.value)"/>
+              </div>
+              <div>
+                <label>Tên khách hàng</label>
+                <input id="outbound-customer-name" placeholder="VD: John Smith" style="font-size:13px;"/>
+              </div>
+
+              <div>
+                <label>Mục đích email *</label>
+                <select id="outbound-purpose" onchange="onPurposeChange()">
+                  <option value="">-- Chọn mục đích --</option>
+                  <option value="confirm_size">Xác nhận size / màu sắc / thiết kế</option>
+                  <option value="confirm_address">Xác nhận địa chỉ giao hàng</option>
+                  <option value="confirm_phone">Yêu cầu số điện thoại liên hệ</option>
+                  <option value="confirm_all">Xác nhận toàn bộ thông tin đơn</option>
+                  <option value="order_update">Cập nhật tình trạng đơn hàng</option>
+                  <option value="delay_notice">Thông báo chậm trễ giao hàng</option>
+                  <option value="product_issue">Thông báo vấn đề sản phẩm</option>
+                  <option value="custom">Khác — tự mô tả</option>
+                </select>
+              </div>
+
+              <!-- Dynamic fields based on purpose -->
+              <div id="outbound-dynamic-fields" style="display:flex;flex-direction:column;gap:10px;"></div>
+
+              <!-- Order info from Excel -->
+              <div id="outbound-order-info" style="display:none;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px;">
+                <div style="font-size:11px;font-weight:600;color:var(--accent2);margin-bottom:6px;">📦 Thông tin đơn hàng (từ Excel)</div>
+                <div id="outbound-order-detail" style="font-size:12px;line-height:1.7;"></div>
+              </div>
+
+              <div>
+                <label>Ghi chú thêm cho agent (tuỳ chọn)</label>
+                <textarea id="outbound-notes" rows="2" style="resize:none;font-size:12px;" placeholder="VD: Khách đặt 2 áo khác size, cần xác nhận từng cái..."></textarea>
+              </div>
+
+              <button class="analyze-btn" id="outbound-btn" onclick="generateOutbound()">✦ Viết email chủ động</button>
+            </div>
+
+            <!-- RIGHT: OUTBOUND OUTPUT -->
+            <div class="panel">
+              <div class="panel-head" style="justify-content:space-between;">
+                <span>🤖 Email soạn bởi Agent</span>
+                <span id="outbound-status" class="status-pill"><div class="dot"></div> Chờ thông tin...</span>
+              </div>
+
+              <div id="outbound-placeholder" style="flex:1;display:flex;align-items:center;justify-content:center;min-height:200px;">
+                <div class="draft-placeholder">
+                  <div style="font-size:32px;margin-bottom:10px;">✉</div>
+                  Điền thông tin bên trái<br>và nhấn viết email
+                </div>
+              </div>
+
+              <div id="outbound-result" style="display:none;flex-direction:column;gap:12px;">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                  <div style="display:flex;flex-direction:column;gap:6px;">
+                    <label style="display:flex;align-items:center;gap:6px;">✉ Email gốc <span style="font-size:11px;color:var(--muted);">(copy gửi khách)</span></label>
+                    <div class="draft-box" id="outbound-draft-original" style="min-height:200px;"></div>
+                    <button class="copy-btn" onclick="copyOutboundDraft()">⎘ Copy email gốc — dán vào PrivateMail để gửi</button>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:6px;">
+                    <label>🇻🇳 Bản dịch tiếng Việt</label>
+                    <div class="draft-box" id="outbound-draft-vietnamese" style="min-height:200px;color:var(--muted);"></div>
+
                   </div>
                 </div>
+                <button class="btn" style="font-size:12px;width:100%;" onclick="resetOutbound()">↺ Viết email khác</button>
               </div>
             </div>
 
-            <!-- STEP 3: Inbox -->
-            <div class="step-blk" id="inbox-step" style="display:none;flex:1;min-height:0;">
-              <div class="step-hdr">
-                <span class="step-num">3</span>
-                <span class="step-lbl">Inbox chưa đọc</span>
-                <div style="margin-left:auto;display:flex;gap:6px;align-items:center;">
-                  <span id="inbox-count" style="font-size:11px;color:var(--accent2);font-weight:600;"></span>
-                  <button class="btn sm" onclick="loadInbox()" id="inbox-load-btn">⟳</button>
+          </div>
+        </div>
+
+
+        <!-- REPLY MODE (default) -->
+        <div id="reply-mode">
+        <!-- ROW 1: INPUT + ANALYSIS -->
+        <div class="agent-grid">
+
+          <!-- LEFT: INPUT — New stepped layout -->
+          <div class="panel" style="gap:0;">
+
+            <!-- BƯỚC 1: Upload file đơn hàng -->
+            <div class="step-block">
+              <div class="step-header">
+                <div class="step-badge">1</div>
+                <div class="step-title">Upload file đơn hàng</div>
+                <div id="excel-status" style="font-size:11px;color:var(--accent2);margin-left:auto;"></div>
+              </div>
+              <div id="excel-upload-area" style="display:flex;gap:6px;align-items:center;">
+                <label style="margin:0;flex:1;">
+                  <div class="upload-zone" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'" id="excel-drop-label">
+                    📂 Upload file Excel / CSV đơn hàng
+                  </div>
+                  <input type="file" id="excel-file-input" accept=".xlsx,.xls,.csv" style="display:none;" onchange="loadExcelFile(this)"/>
+                </label>
+                <button class="btn sm" onclick="clearExcelData()" id="excel-clear-btn" style="display:none;font-size:11px;">✕</button>
+              </div>
+              <div id="excel-search-area" style="display:none;flex-direction:column;gap:6px;">
+                <div style="display:flex;gap:6px;">
+                  <input id="excel-search-email" placeholder="Tìm theo email khách..." style="flex:1;font-size:12px;padding:6px 10px;" oninput="searchOrderByEmail(this.value)"/>
+                  <button class="btn sm" onclick="searchOrderByEmail(document.getElementById('excel-search-email').value)">🔍</button>
+                </div>
+                <div id="excel-search-result" style="display:none;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:10px;font-size:12px;"></div>
+              </div>
+            </div>
+
+            <!-- BƯỚC 2: Chọn store -->
+            <div class="step-block">
+              <div class="step-header">
+                <div class="step-badge">2</div>
+                <div class="step-title">Chọn cửa hàng</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <select id="store-select" onchange="onStoreChange()" style="flex:1;padding:7px 10px;font-size:13px;">
+                  <option value="">-- Chọn cửa hàng --</option>
+                </select>
+                <div id="store-preview-mini" style="display:none;align-items:center;gap:6px;flex-shrink:0;">
+                  <div id="preview-logo" style="width:28px;height:28px;border-radius:6px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;">?</div>
+                  <div>
+                    <div id="preview-name" style="font-size:12px;font-weight:500;line-height:1.2;"></div>
+                    <div id="preview-email" style="font-size:10px;color:var(--muted);"></div>
+                  </div>
+                  <span class="tag tag-green" id="preview-tone" style="font-size:10px;"></span>
                 </div>
               </div>
-              <div id="inbox-list" style="display:flex;flex-direction:column;gap:5px;max-height:320px;overflow-y:auto;"></div>
+              <!-- Hidden for compat -->
+              <div id="store-preview" class="hidden"></div>
             </div>
 
-            <!-- STEP 4: Tracking -->
-            <div class="step-blk" id="tracking-step">
-              <div class="step-hdr">
-                <span class="step-num">4</span>
-                <span class="step-lbl">Tracking (tuỳ chọn)</span>
+            <!-- BƯỚC 4: Tracking -->
+            <div class="step-block" id="step-tracking-block">
+              <div class="step-header">
+                <div class="step-badge">3</div>
+                <div class="step-title">Tra cứu tracking (tuỳ chọn)</div>
               </div>
               <div style="display:flex;gap:6px;">
-                <input id="tracking-num" placeholder="Tracking number..." style="flex:1;font-size:12px;padding:6px 10px;font-family:var(--mono);" oninput="onTrackingInput()"/>
-                <button class="btn sm" onclick="openTracking()">17track ↗</button>
+                <input id="tracking-number" placeholder="Tracking number (tự điền từ Excel hoặc nhập tay)..." style="flex:1;font-size:12px;padding:6px 10px;font-family:var(--mono);" oninput="updateTrackingLink()"/>
+                <button class="btn sm" onclick="openTracking()" style="white-space:nowrap;font-size:11px;">17track ↗</button>
               </div>
-              <div id="tracking-link" style="display:none;font-size:11px;margin-top:4px;">
-                <a id="tracking-url" href="#" target="_blank" style="color:var(--accent);font-family:var(--mono);word-break:break-all;"></a>
+              <div id="tracking-link-row" class="hidden" style="display:flex;align-items:center;gap:6px;">
+                <span style="font-size:11px;color:var(--muted);">Link:</span>
+                <a id="tracking-link-display" href="#" target="_blank" style="font-size:11px;color:var(--accent);font-family:var(--mono);word-break:break-all;"></a>
               </div>
-              <textarea id="tracking-status" rows="2" style="resize:none;font-size:11px;font-family:var(--mono);margin-top:6px;" placeholder="Paste kết quả từ 17track..."></textarea>
-            </div>
-
-            <!-- STEP 5: Email text -->
-            <div class="step-blk" id="email-step">
-              <div class="step-hdr">
-                <span class="step-num">5</span>
-                <span class="step-lbl">Nội dung email</span>
-                <span id="email-src" style="display:none;margin-left:auto;font-size:11px;color:var(--accent2);">✓ Từ inbox</span>
-              </div>
-              <textarea id="email-text" rows="5" style="resize:vertical;font-size:12px;line-height:1.6;" placeholder="Tự điền khi chọn email từ inbox, hoặc dán thủ công..." onblur="autoLookup()" onpaste="setTimeout(autoLookup,100)"></textarea>
-              <button class="analyze-btn" id="analyze-btn" onclick="runAnalysis()">✦ Phân tích email</button>
-            </div>
-
-          </div><!-- end left -->
-
-          <!-- RIGHT PANEL -->
-          <div id="right-panel" style="overflow-y:auto;display:flex;flex-direction:column;background:var(--bg2);">
-
-            <!-- STATE: placeholder -->
-            <div id="state-placeholder" style="flex:1;display:flex;align-items:center;justify-content:center;">
-              <div class="draft-placeholder" style="padding:40px;">
-                <div style="font-size:40px;margin-bottom:12px;">📬</div>
-                <div style="font-size:14px;font-weight:500;margin-bottom:6px;">Chưa có email nào được chọn</div>
-                <div style="font-size:12px;color:var(--muted);">Chọn store → inbox tự tải<br>Click email để xem & xử lý</div>
+              <div>
+                <label style="margin-bottom:3px;font-size:11px;color:var(--muted);">Paste kết quả tracking từ 17track</label>
+                <textarea id="tracking-result" rows="2" style="resize:none;font-size:11px;font-family:var(--mono);" placeholder="VD: In Transit — Los Angeles CA, Jan 15..."></textarea>
               </div>
             </div>
 
-            <!-- STATE: email preview (khi click inbox) -->
-            <div id="state-preview" style="display:none;flex-direction:column;gap:0;height:100%;">
-              <div style="padding:20px 24px;border-bottom:1px solid var(--border);">
-                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
-                  <div style="flex:1;">
-                    <div id="prev-subject" style="font-size:15px;font-weight:600;margin-bottom:6px;line-height:1.4;"></div>
-                    <div style="font-size:12px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;">
-                      <span>Từ: <strong id="prev-from" style="color:var(--text);"></strong></span>
-                      <span id="prev-date"></span>
-                    </div>
-                  </div>
-                  <button onclick="clearPreview()" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;flex-shrink:0;padding:2px;">✕</button>
+            <!-- BƯỚC 5: Phân tích -->
+            <div class="step-block" style="border-bottom:none;">
+              <div class="step-header">
+                <div class="step-badge">5</div>
+                <div class="step-title">Phân tích email</div>
+                <span id="email-source-badge" style="font-size:11px;color:var(--accent2);display:none;margin-left:auto;">✓ Lấy từ inbox</span>
+              </div>
+              <div id="email-input-area" style="display:flex;flex-direction:column;gap:6px;">
+                <textarea class="email-input" id="customer-email" style="min-height:100px;" placeholder="Email tự điền khi chọn từ inbox, hoặc dán thủ công..." onblur="autoLookupFromEmail()" onpaste="setTimeout(autoLookupFromEmail, 100)"></textarea>
+              </div>
+              <button class="analyze-btn" id="analyze-btn" onclick="startAnalysis()">✦ Phân tích chuỗi email</button>
+            </div>
+
+            <!-- Hidden inbox detail panel (used by JS) -->
+            <div id="inline-inbox" style="display:none;"></div>
+            <div id="inbox-detail-panel" style="display:none;flex-direction:column;"></div>
+            <div id="inbox-ai-summary" style="display:none;"></div>
+            <div id="inbox-body" style="display:none;"></div>
+            <div id="inbox-thread" style="display:none;"></div>
+            <div id="inbox-thread-list" style="display:none;"></div>
+            <div id="inbox-subject" style="display:none;"></div>
+            <div id="inbox-from" style="display:none;"></div>
+            <div id="inbox-date" style="display:none;"></div>
+          </div>
+
+          <!-- RIGHT: ANALYSIS OUTPUT -->
+          <div class="panel">
+            <div class="panel-head" style="justify-content:space-between;">
+              <span>🤖 Phân tích của Agent</span>
+              <span id="output-status" class="status-pill"><div class="dot"></div> Chờ email...</span>
+            </div>
+
+            <!-- INBOX EMAIL DETAIL — hiện khi click email từ inbox -->
+            <div id="inbox-right-detail" style="display:none;flex-direction:column;gap:12px;">
+
+              <!-- Header: từ, tiêu đề, ngày -->
+              <div style="border-bottom:1px solid var(--border);padding-bottom:10px;">
+                <div style="font-size:14px;font-weight:600;margin-bottom:5px;line-height:1.4;" id="inbox-subject"></div>
+                <div style="display:flex;gap:12px;font-size:12px;color:var(--muted);flex-wrap:wrap;align-items:center;">
+                  <span>Từ: <strong id="inbox-from" style="color:var(--text);"></strong></span>
+                  <span id="inbox-date"></span>
+                  <button onclick="closeInboxDetail()" style="margin-left:auto;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:14px;">✕</button>
                 </div>
               </div>
 
-              <!-- AI Summary -->
-              <div id="prev-summary" style="padding:16px 24px;border-bottom:1px solid var(--border);background:var(--bg3);">
-                <div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:6px;letter-spacing:.05em;">🤖 TÓM TẮT AI</div>
-                <div id="prev-summary-text" style="font-size:13px;line-height:1.7;"></div>
-              </div>
+              <!-- AI Tóm tắt — hiện ngay lập tức -->
+              <div id="inbox-ai-summary" style="display:none;"></div>
 
-              <!-- Process button -->
-              <div style="padding:16px 24px;border-bottom:1px solid var(--border);">
-                <button onclick="processEmail()" style="width:100%;padding:12px;border-radius:var(--radius);background:var(--accent);border:none;color:#fff;font-size:14px;font-weight:600;cursor:pointer;letter-spacing:.02em;">
-                  ✦ Xử lý email này với Agent
-                </button>
-              </div>
+              <!-- Nút xử lý — ngay dưới tóm tắt, nổi bật -->
+              <button onclick="processInboxEmail()"
+                style="width:100%;padding:11px;border-radius:var(--radius);background:var(--accent);border:none;color:#fff;font-size:14px;font-weight:600;cursor:pointer;letter-spacing:.02em;">
+                ✦ Xử lý email này với Agent
+              </button>
 
-              <!-- Email body -->
-              <details style="padding:16px 24px;cursor:pointer;" open>
-                <summary style="font-size:12px;color:var(--muted);font-weight:500;list-style:none;margin-bottom:8px;">▼ Nội dung email gốc</summary>
-                <div id="prev-body" style="font-size:12px;line-height:1.8;white-space:pre-wrap;color:var(--muted);max-height:300px;overflow-y:auto;"></div>
+              <!-- Nội dung email gốc (collapsible) -->
+              <details style="background:var(--bg3);border-radius:var(--radius);padding:2px;">
+                <summary style="font-size:11px;font-weight:500;color:var(--muted);padding:8px 10px;cursor:pointer;list-style:none;display:flex;align-items:center;gap:5px;">
+                  <span>▶</span> Xem nội dung email gốc
+                </summary>
+                <div id="inbox-body" style="font-size:12px;line-height:1.7;white-space:pre-wrap;max-height:250px;overflow-y:auto;color:var(--muted);padding:0 10px 10px;"></div>
               </details>
 
-              <!-- Thread -->
-              <div style="padding:0 24px 16px;">
-                <button class="btn" onclick="loadThread()" style="width:100%;font-size:12px;">🔗 Tải toàn bộ thread</button>
-                <div id="thread-list" style="display:none;margin-top:10px;display:flex;flex-direction:column;gap:6px;"></div>
+              <!-- Xem thread -->
+              <button class="btn" onclick="loadThread()" style="font-size:12px;width:100%;">🔗 Tải toàn bộ thread</button>
+              <div id="inbox-thread" style="display:none;flex-direction:column;gap:5px;border-top:1px solid var(--border);padding-top:8px;">
+                <div style="font-size:11px;font-weight:500;color:var(--muted);">📨 Thread</div>
+                <div id="inbox-thread-list" style="max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:5px;"></div>
+              </div>
+
+            </div>
+
+            <div id="output-placeholder" style="flex:1;display:flex;align-items:center;justify-content:center;">
+              <div class="draft-placeholder">
+                <div style="font-size:32px;margin-bottom:10px;">📭</div>
+                Chọn store → inbox tự tải<br>Click email để xử lý
               </div>
             </div>
 
-            <!-- STATE: analysis -->
-            <div id="state-analysis" style="display:none;flex-direction:column;padding:20px 24px;gap:14px;">
-              <div style="display:flex;align-items:center;justify-content:space-between;">
-                <div style="font-size:13px;font-weight:600;">🤖 Phân tích của Agent</div>
-                <div id="analysis-status" class="status-pill"><div class="dot pulse"></div> Đang phân tích...</div>
-              </div>
-
+            <div id="output-analysis" class="hidden" style="display:flex;flex-direction:column;gap:10px;">
               <div>
-                <label>Phân loại</label>
-                <div id="cat-row" class="cat-row"></div>
+                <label>Phân loại vấn đề</label>
+                <div class="cat-row" id="cat-display"></div>
               </div>
               <div>
-                <label>Tóm tắt lịch sử</label>
-                <div class="summary-box" id="s-history"></div>
+                <label>Tóm tắt lịch sử trao đổi</label>
+                <div class="summary-box" id="history-summary"></div>
               </div>
               <div>
-                <label>Yêu cầu mới nhất</label>
-                <div class="summary-box" style="border-left:3px solid var(--accent);" id="s-request"></div>
+                <label>Yêu cầu mới nhất của khách</label>
+                <div class="summary-box" style="border-left:3px solid var(--accent);" id="latest-request"></div>
               </div>
               <div>
                 <label>Đề xuất hướng xử lý</label>
-                <div class="summary-box" style="border-left:3px solid var(--accent2);" id="s-direction"></div>
+                <div class="summary-box" style="border-left:3px solid var(--accent2);" id="direction-display"></div>
               </div>
-              <div>
-                <label>Góp ý cho agent</label>
-                <textarea id="feedback-txt" rows="2" style="resize:none;font-size:12px;" placeholder="VD: đề nghị resend thay vì refund, thêm voucher 10%..."></textarea>
+
+              <div style="border-top:1px solid var(--border);padding-top:10px;">
+                <label style="margin-bottom:6px;">Góp ý cho agent (nếu muốn chỉnh hướng xử lý)</label>
+                <textarea id="feedback-input" rows="2" style="resize:none;font-size:12px;" placeholder="VD: đề nghị resend thay vì refund, thêm lời xin lỗi chân thành hơn, thêm voucher 10%..."></textarea>
                 <div style="display:flex;gap:8px;margin-top:8px;">
-                  <button class="btn" style="flex:1;font-size:12px;" id="feedback-btn" onclick="sendFeedback()">✎ Gửi góp ý</button>
-                  <button class="analyze-btn" style="flex:1;padding:8px;" id="approve-btn" onclick="writeDraft()">✓ Viết email</button>
+                  <button class="btn" style="flex:1;font-size:12px;" id="feedback-btn" onclick="submitFeedback()">✎ Gửi góp ý → agent chỉnh lại</button>
+                  <button class="analyze-btn" style="flex:1;padding:8px;" id="approve-btn" onclick="writeDraft()">✓ Đồng ý — Viết email</button>
                 </div>
               </div>
-            </div>
-
-            <!-- STATE: draft -->
-            <div id="state-draft" style="display:none;flex-direction:column;padding:20px 24px;gap:14px;">
-              <div style="display:flex;align-items:center;justify-content:space-between;">
-                <div style="font-size:13px;font-weight:600;">📝 Draft email</div>
-                <span id="draft-lang" class="status-pill"></span>
-              </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
-                <div style="display:flex;flex-direction:column;gap:6px;">
-                  <label>✉ Email gốc (ngôn ngữ khách)</label>
-                  <div class="draft-box" id="draft-orig"></div>
-                  <button class="copy-btn" id="copy-btn" onclick="copyDraft()">⎘ Copy — dán vào PrivateMail để gửi</button>
-                </div>
-                <div style="display:flex;flex-direction:column;gap:6px;">
-                  <label>🇻🇳 Bản dịch tiếng Việt</label>
-                  <div class="draft-box" id="draft-vn" style="color:var(--muted);"></div>
-                </div>
-              </div>
-              <div style="display:flex;gap:8px;">
-                <button class="btn" style="font-size:12px;" onclick="newEmail()">↺ Email mới</button>
-                <button class="btn" style="font-size:12px;" onclick="redraft()">✎ Viết lại</button>
-              </div>
-            </div>
-
-          </div><!-- end right -->
-
-        </div><!-- end reply mode -->
-
-        <!-- ══ OUTBOUND MODE ══ -->
-        <div id="mode-outbound" style="display:none;grid-template-columns:1fr 1fr;height:100%;">
-          <div style="border-right:1px solid var(--border);overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:14px;">
-            <div class="panel-head">✉ Thông tin email chủ động</div>
-            <div>
-              <label>Cửa hàng</label>
-              <select id="out-store" onchange="onOutStoreChange()"><option value="">-- Chọn cửa hàng --</option></select>
-            </div>
-            <div>
-              <label>Email khách *</label>
-              <input id="out-email" placeholder="customer@email.com" oninput="outLookup(this.value)"/>
-            </div>
-            <div>
-              <label>Tên khách</label>
-              <input id="out-name" placeholder="VD: John Smith"/>
-            </div>
-            <div>
-              <label>Mục đích *</label>
-              <select id="out-purpose" onchange="onPurposeChange()">
-                <option value="">-- Chọn mục đích --</option>
-                <option value="confirm_size">Xác nhận size / màu / thiết kế</option>
-                <option value="confirm_address">Xác nhận địa chỉ giao hàng</option>
-                <option value="confirm_phone">Yêu cầu số điện thoại</option>
-                <option value="confirm_all">Xác nhận toàn bộ đơn hàng</option>
-                <option value="order_update">Cập nhật tình trạng đơn</option>
-                <option value="delay_notice">Thông báo chậm trễ</option>
-                <option value="product_issue">Thông báo vấn đề sản phẩm</option>
-                <option value="custom">Khác</option>
-              </select>
-            </div>
-            <div id="out-dynamic"></div>
-            <div id="out-order-info" style="display:none;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px;">
-              <div style="font-size:11px;font-weight:600;color:var(--accent2);margin-bottom:6px;">📦 Thông tin đơn từ Excel</div>
-              <div id="out-order-detail" style="font-size:12px;line-height:1.7;"></div>
-            </div>
-            <div>
-              <label>Ghi chú thêm</label>
-              <textarea id="out-notes" rows="2" style="resize:none;font-size:12px;" placeholder="Thông tin bổ sung cho agent..."></textarea>
-            </div>
-            <button class="analyze-btn" id="out-btn" onclick="genOutbound()">✦ Viết email chủ động</button>
-          </div>
-          <div style="overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:14px;">
-            <div style="display:flex;align-items:center;justify-content:space-between;">
-              <div class="panel-head">📝 Email soạn bởi Agent</div>
-              <span id="out-status" class="status-pill"><div class="dot"></div> Chờ...</span>
-            </div>
-            <div id="out-placeholder" style="flex:1;display:flex;align-items:center;justify-content:center;min-height:200px;">
-              <div class="draft-placeholder">
-                <div style="font-size:32px;margin-bottom:8px;">✉</div>
-                Điền thông tin và nhấn viết email
-              </div>
-            </div>
-            <div id="out-result" style="display:none;flex-direction:column;gap:12px;">
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                <div style="display:flex;flex-direction:column;gap:6px;">
-                  <label>✉ Email gốc</label>
-                  <div class="draft-box" id="out-orig" style="min-height:200px;"></div>
-                  <button class="copy-btn" onclick="copyOutbound()">⎘ Copy — dán vào PrivateMail</button>
-                </div>
-                <div style="display:flex;flex-direction:column;gap:6px;">
-                  <label>🇻🇳 Bản dịch</label>
-                  <div class="draft-box" id="out-vn" style="min-height:200px;color:var(--muted);"></div>
-                </div>
-              </div>
-              <button class="btn" style="font-size:12px;" onclick="resetOutbound()">↺ Viết email khác</button>
             </div>
           </div>
-        </div><!-- end outbound -->
 
-      </div><!-- end content -->
-    </div><!-- end email-agent page -->
+        </div>
+
+        <!-- ROW 2: DRAFT OUTPUT (hiện sau khi approve) -->
+        <div id="draft-section" class="panel hidden" style="height:auto;">
+          <div class="panel-head" style="justify-content:space-between;">
+            <span>📝 Draft email — xác nhận trước khi gửi</span>
+            <span id="lang-badge" class="status-pill"><div class="dot" style="color:var(--accent2)"></div> Đang soạn...</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <label style="display:flex;align-items:center;gap:6px;">
+                ✉ Email gốc <span style="font-size:11px;color:var(--muted);">(ngôn ngữ khách)</span>
+              </label>
+              <div class="draft-box" id="draft-original" style="min-height:180px;"></div>
+              <button class="copy-btn" onclick="copyDraft()" id="copy-btn">⎘ Copy email gốc — dán vào PrivateMail để gửi</button>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <label style="display:flex;align-items:center;gap:6px;">
+                🇻🇳 Bản dịch tiếng Việt <span style="font-size:11px;color:var(--muted);">(để xác nhận)</span>
+              </label>
+              <div class="draft-box" id="draft-vietnamese" style="min-height:180px;color:var(--muted);"></div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:4px;">
+            <button class="btn" style="font-size:12px;" onclick="resetAgent()">↺ Xử lý email mới</button>
+            <button class="btn" style="font-size:12px;" onclick="redraftWithNote()">✎ Yêu cầu viết lại</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
 
 
     <!-- CREATIVE AGENT PAGE -->
@@ -956,14 +984,8 @@ async function loadStores() {
 
 function renderStoreSelect() {
   const sel = document.getElementById('store-select');
-  if (sel) sel.innerHTML = '<option value="">-- Chọn cửa hàng --</option>' +
+  sel.innerHTML = '<option value="">-- Chọn cửa hàng --</option>' +
     stores.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-  // Also update v8 Email Agent store selector
-  const sel2 = document.getElementById('store-sel');
-  if (sel2) sel2.innerHTML = '<option value="">-- Chọn cửa hàng --</option>' +
-    stores.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-  // Outbound store
-  renderOutStores();
 }
 
 function onStoreChange() {
@@ -983,8 +1005,6 @@ function onStoreChange() {
     // Show inbox step
     if (inboxBlock) inboxBlock.style.display = 'block';
     // Sync inbox store and load
-    inboxStore = selectedStore;
-    loadInbox();
   } else {
     if (miniPreview) miniPreview.style.display = 'none';
     if (inboxBlock) inboxBlock.style.display = 'none';
@@ -1302,238 +1322,6 @@ function clearExcelData() {
   document.getElementById('excel-search-email').value = '';
 }
 
-// ── INBOX ─────────────────────────────────────────────
-let inboxStore = null;
-let selectedInboxEmail = null;
-
-function renderInboxStores() {
-  const sel = document.getElementById('inbox-store-select');
-  if (!sel) return;
-  sel.innerHTML = '<option value="">-- Chọn store --</option>' +
-    stores.map(s => `<option value="${s.id}">${s.name} (${s.email})</option>`).join('');
-}
-
-function onInboxStoreChange() {
-  const id = document.getElementById('inbox-store-select').value;
-  inboxStore = stores.find(s => s.id === id) || null;
-  document.getElementById('inbox-list').innerHTML = '';
-  document.getElementById('inbox-detail').style.display = 'none';
-  document.getElementById('inbox-placeholder').style.display = 'flex';
-  document.getElementById('inbox-thread').style.display = 'none';
-}
-
-async function loadInbox() {
-  if (!inboxStore) { alert('Vui lòng chọn store!'); return; }
-  const btn = document.getElementById('inbox-refresh-btn');
-  const status = document.getElementById('inbox-status');
-  btn.disabled = true; btn.textContent = '⏳ Đang tải...';
-  status.className = 'status-pill active';
-  status.innerHTML = '<div class="dot pulse"></div> Đang tải inbox...';
-  document.getElementById('inbox-list').innerHTML = '';
-
-  try {
-    const data = await callEmailServer('GET', `/inbox/${inboxStore.id}?limit=30`);
-    const emails = data.emails || [];
-    status.className = 'status-pill';
-    status.innerHTML = `<div class="dot"></div> ${emails.length} email — ${inboxStore.name}`;
-
-    if (!emails.length) {
-      document.getElementById('inbox-list').innerHTML = '<div style="color:var(--muted);font-size:13px;padding:10px 0;">✓ Không có email chưa đọc!</div>';
-    } else {
-      const unreadCount = emails.length;
-      if (unreadCount > 0) {
-        status.innerHTML = `<div class="dot" style="color:var(--accent2)"></div> <strong style="color:var(--accent2)">${unreadCount} chưa đọc</strong>`;
-      } else {
-        status.innerHTML = `<div class="dot"></div> Không có email chưa đọc`;
-      }
-      document.getElementById('inbox-list').innerHTML = emails.map((e, i) => {
-        const from = e.from?.replace(/<.*>/, '').trim() || e.from || 'Unknown';
-        const date = new Date(e.date).toLocaleString('vi-VN', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-        const unread = !e.seen;
-        return `<div class="inbox-card ${unread ? 'unread' : ''}" onclick="openInboxEmail(${i})" id="inbox-card-${i}" data-idx="${i}"
-          style="border-left:3px solid ${unread ? 'var(--accent)' : 'transparent'};">
-          <div class="inbox-meta">
-            <div class="inbox-from" style="font-weight:${unread ? '600' : '400'};color:${unread ? 'var(--text)' : 'var(--muted)'};">
-              ${unread ? '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-right:5px;vertical-align:middle;"></span>' : ''}${from}
-            </div>
-            <div class="inbox-time">${date}</div>
-          </div>
-          <div class="inbox-subj" style="font-weight:${unread ? '500' : '400'};color:${unread ? 'var(--text)' : 'var(--muted)'};">${e.subject || '(no subject)'}</div>
-          <div class="inbox-snippet">${e.snippet || ''}</div>
-        </div>`;
-      }).join('');
-      window._inboxEmails = emails;
-    }
-  } catch(e) {
-    status.innerHTML = '<div class="dot" style="color:var(--danger)"></div> Lỗi tải inbox';
-    document.getElementById('inbox-list').innerHTML = `<div style="color:var(--danger);font-size:12px;">${e.message}</div>`;
-    console.error(e);
-  }
-  btn.disabled = false; btn.textContent = '⟳ Tải inbox';
-}
-
-async function openInboxEmail(idx) {
-  const emails = window._inboxEmails || [];
-  const email = emails[idx];
-  if (!email) return;
-  selectedInboxEmail = email;
-
-  // Highlight selected card
-  document.querySelectorAll('.inbox-card').forEach(c => c.classList.remove('active'));
-  document.getElementById('inbox-card-' + idx)?.classList.add('active');
-
-  // Show RIGHT panel immediately
-  document.getElementById('output-placeholder').classList.add('hidden');
-  document.getElementById('output-analysis').classList.add('hidden');
-  const rightPanel = document.getElementById('inbox-right-detail');
-  if (rightPanel) {
-    rightPanel.style.display = 'flex';
-    rightPanel.querySelector('#inbox-subject').textContent = email.subject || '(no subject)';
-    rightPanel.querySelector('#inbox-from').textContent = email.from?.replace(/<.*>/, '').trim() || email.from || '';
-    rightPanel.querySelector('#inbox-date').textContent = new Date(email.date).toLocaleString('vi-VN',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-    rightPanel.querySelector('#inbox-body').textContent = (email.text || '').slice(0, 600) + ((email.text||'').length > 600 ? '...' : '');
-    const thread = rightPanel.querySelector('#inbox-thread');
-    if (thread) thread.style.display = 'none';
-  }
-
-  // AI quick summary
-  const summaryEl = rightPanel ? rightPanel.querySelector('#inbox-ai-summary') : null;
-  if (summaryEl) {
-    summaryEl.style.display = 'block';
-    summaryEl.innerHTML = '<span style="color:var(--muted);font-size:11px;">⏳ Đang tóm tắt...</span>';
-    try {
-      const emailText = email.text || '';
-      const res = await fetch(CONFIG.WORKER_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-5',
-          max_tokens: 200,
-          system: 'Tóm tắt email của khách bằng tiếng Việt trong 2 dòng: (1) Vấn đề/yêu cầu chính, (2) Mức độ cấp thiết. Ngắn gọn, súc tích. Trả về plain text.',
-          messages: [{ role: 'user', content: `Subject: ${email.subject}\nFrom: ${email.from}\n\n${emailText.slice(0, 800)}` }]
-        })
-      });
-      const data = await res.json();
-      const summary = data.content?.[0]?.text || '';
-      summaryEl.innerHTML = `<div style="font-size:12px;line-height:1.6;color:var(--text);padding:8px 10px;background:var(--bg3);border-radius:6px;border-left:3px solid var(--accent2);">${summary.replace(/\n/g,'<br>')}</div>`;
-      summaryEl.style.display = 'block';
-    } catch(e) {
-      summaryEl.innerHTML = '';
-    }
-  }
-}
-
-function closeInboxDetail() {
-  const rightPanel = document.getElementById('inbox-right-detail');
-  if (rightPanel) rightPanel.style.display = 'none';
-  document.querySelectorAll('.inbox-card').forEach(c => c.classList.remove('active'));
-  document.getElementById('output-placeholder').classList.remove('hidden');
-}
-
-async function loadThread() {
-  if (!selectedInboxEmail || !inboxStore) return;
-  const btn = document.querySelector('#inbox-thread + * button, #inbox-detail button:last-child');
-  try {
-    const subject = selectedInboxEmail.subject?.replace(/^(re:|fw:|fwd:)\s*/gi,'').trim() || '';
-    const data = await callEmailServer('GET', `/thread/${inboxStore.id}?subject=${encodeURIComponent(subject)}`);
-    const thread = data.thread || [];
-
-    document.getElementById('inbox-thread').style.display = 'flex';
-    document.getElementById('inbox-thread-list').innerHTML = thread.map(e => {
-      const isStore = (e.from||'').toLowerCase().includes(inboxStore.email.toLowerCase());
-      const from = e.from?.replace(/<.*>/, '').trim() || e.from || 'Unknown';
-      const date = new Date(e.date).toLocaleString('vi-VN');
-      return `<div style="padding:10px;border-radius:var(--radius);margin-bottom:6px;background:${isStore?'var(--bg3)':'var(--bg2)'};border-left:3px solid ${isStore?'var(--accent2)':'var(--accent)'};">
-        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
-          <span style="font-size:12px;font-weight:500;">${from}</span>
-          <span style="font-size:11px;color:var(--muted);">${date}</span>
-        </div>
-        <div style="font-size:12px;line-height:1.6;color:var(--muted);white-space:pre-wrap;">${(e.text||'').slice(0,300)}${(e.text||'').length>300?'...':''}</div>
-      </div>`;
-    }).join('') || '<div style="color:var(--muted);font-size:12px;">Chỉ có 1 email trong thread này.</div>';
-
-    // Store thread for agent
-    window._currentThread = thread;
-  } catch(e) {
-    console.error(e);
-  }
-}
-
-function processInboxEmail() {
-  if (!selectedInboxEmail) return;
-
-  // Mark as seen NOW (nhân viên đã quyết định xử lý)
-  const emails = window._inboxEmails || [];
-  const emailIdx = emails.findIndex(e => e.uid === selectedInboxEmail.uid);
-  if (emailIdx >= 0 && !emails[emailIdx].seen) {
-    emails[emailIdx].seen = true;
-    const card = document.getElementById('inbox-card-' + emailIdx);
-    if (card) {
-      card.style.borderLeft = '3px solid transparent';
-      const fromEl = card.querySelector('.inbox-from');
-      const subjEl = card.querySelector('.inbox-subj');
-      if (fromEl) { fromEl.style.fontWeight = '400'; fromEl.style.color = 'var(--muted)'; }
-      if (subjEl) { subjEl.style.fontWeight = '400'; subjEl.style.color = 'var(--muted)'; }
-      const dot = card.querySelector('span[style*="border-radius:50%"]');
-      if (dot) dot.remove();
-    }
-    if (inboxStore) {
-      callEmailServer('POST', '/mark-seen/' + inboxStore.id + '/' + selectedInboxEmail.uid).catch(() => {});
-    }
-  }
-
-  // Build thread text — dùng thread nếu đã load, không thì dùng email hiện tại
-  let threadText = '';
-  const thread = window._currentThread;
-  if (thread && thread.length > 1) {
-    threadText = thread.map((e, i) => {
-      const from = e.from?.replace(/<.*>/, '').trim() || 'Unknown';
-      const date = new Date(e.date).toLocaleDateString('vi-VN');
-      return `--- Email ${i+1} (${date}) ---\nFrom: ${from}\n${e.text || ''}`;
-    }).join('\n\n');
-  } else {
-    const from = selectedInboxEmail.from?.replace(/<.*>/, '').trim() || 'Unknown';
-    const date = new Date(selectedInboxEmail.date).toLocaleDateString('vi-VN');
-    threadText = `--- Email (${date}) ---\nFrom: ${from}\nSubject: ${selectedInboxEmail.subject || ''}\n\n${selectedInboxEmail.text || ''}`;
-  }
-
-  // Store thread info for reply threading
-  agentState = agentState || {};
-  agentState.threadMessageId = selectedInboxEmail.messageId || '';
-  agentState.threadReferences = Array.isArray(selectedInboxEmail.references)
-    ? selectedInboxEmail.references.join(' ')
-    : (selectedInboxEmail.references || '');
-
-  // Fill vào email agent — không cần copy paste nữa
-  document.getElementById('customer-email').value = threadText;
-  const badge = document.getElementById('email-source-badge');
-  if (badge) badge.style.display = 'inline';
-
-  // Sync store
-  if (inboxStore) {
-    document.getElementById('store-select').value = inboxStore.id;
-    // Update selectedStore without triggering inbox reload
-    selectedStore = inboxStore;
-    const preview = document.getElementById('store-preview');
-    if (preview) {
-      preview.classList.remove('hidden');
-      document.getElementById('preview-logo').textContent = inboxStore.name[0].toUpperCase();
-      document.getElementById('preview-name').textContent = inboxStore.name;
-      document.getElementById('preview-email').textContent = inboxStore.email || '';
-      document.getElementById('preview-tone').textContent = inboxStore.tone || 'friendly';
-    }
-  }
-
-  // Auto lookup order from Excel
-  setTimeout(() => autoLookupFromEmail(), 100);
-
-  // Show email input area
-  const emailArea = document.getElementById('email-input-area');
-  if (emailArea) emailArea.style.display = 'flex';
-  closeInboxDetail();
-  // Scroll down to analyze button
-  document.getElementById('analyze-btn')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
 
 // ── OUTBOUND EMAIL ───────────────────────────────────
 let outboundStore = null;
@@ -1770,711 +1558,351 @@ function openTracking() {
   window.open(url, '_blank');
 }
 
-// ── EMAIL AGENT v8 ─────────────────────────────────
-// ══ EMAIL AGENT v8 — Clean rewrite ══════════════════
+// ── EMAIL AGENT (v4) ─────────────────────────────────
+let agentState = { analysis: null, detectedLang: 'English' };
 
-// ── State ────────────────────────────────────────────
-let EA = {
-  store: null,
-  email: null,        // selected inbox email
-  logId: null,
-  analysis: null,
-  detectedLang: 'English',
-  draft: '',
-  orderInfo: null,
-};
-
-// ── Category config (uses existing CAT from v7) ──────
-
-// ── Helpers ───────────────────────────────────────────
-function setAgentBadge(txt, active=false) {
-  const b = document.getElementById('agent-badge');
-  b.className = 'status-pill' + (active?' active':'');
-  b.innerHTML = `<div class="dot${active?' pulse':''}"></div> ${txt}`;
+function buildStoreContext() {
+  const storeCtx = `Store name: ${selectedStore.name}
+Store email: ${selectedStore.email || 'N/A'}
+Products/Niche: ${selectedStore.niche || 'Custom POD products'}
+Reply tone: ${selectedStore.tone || 'friendly'}
+Email signature:
+${selectedStore.signature || `Best regards,\n${selectedStore.name} Support Team`}`.trim();
+  const policyCtx = `SHIPPING POLICY: ${globalPolicy.shipping_policy || 'Standard shipping 7-14 business days.'}
+RETURN & REFUND POLICY: ${globalPolicy.return_policy || 'Returns accepted within 30 days for defective/wrong items.'}`.trim();
+  return { storeCtx, policyCtx };
 }
 
-function showState(id) {
-  ['state-placeholder','state-preview','state-analysis','state-draft'].forEach(s => {
-    const el = document.getElementById(s);
-    if (el) el.style.display = s === id ? 'flex' : 'none';
-  });
-}
-
-async function callClaude(system, userMsg, imageBase64=null, imageType='image/jpeg') {
-  let messages;
-  if (imageBase64) {
-    messages = [{role:'user',content:[
-      {type:'image',source:{type:'base64',media_type:imageType,data:imageBase64}},
-      {type:'text',text:userMsg}
-    ]}];
-  } else {
-    messages = [{role:'user',content:userMsg}];
-  }
+async function callClaude(system, userMsg) {
   const res = await fetch(CONFIG.WORKER_URL, {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1500,system,messages})
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: 'claude-sonnet-4-5', max_tokens: 1500, system, messages: [{ role: 'user', content: userMsg }] })
   });
   const data = await res.json();
   if (!res.ok || data.error) throw new Error(data.error?.message || JSON.stringify(data));
-  return data.content.map(i=>i.text||'').join('');
+  if (!data.content) throw new Error('Không nhận được phản hồi. Kiểm tra Claude API key.');
+  return data.content.map(i => i.text || '').join('');
 }
 
-async function callEmailServer(method, path, body=null) {
-  const opts = {method, headers:{'Content-Type':'application/json','x-api-secret':CONFIG.EMAIL_SECRET}};
-  if (body) opts.body = JSON.stringify(body);
-  const res = await fetch(CONFIG.EMAIL_SERVER + path, opts);
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Server error');
-  return data;
+function setStatus(text, active = false) {
+  const badge = document.getElementById('output-status');
+  badge.className = 'status-pill' + (active ? ' active' : '');
+  badge.innerHTML = `<div class="dot${active ? ' pulse' : ''}"></div> ${text}`;
 }
 
-// ── Mode switch ───────────────────────────────────────
-function setMode(mode) {
-  const isReply = mode === 'reply';
-  document.getElementById('mode-reply').style.display = isReply ? 'grid' : 'none';
-  document.getElementById('mode-outbound').style.display = isReply ? 'none' : 'grid';
-  document.getElementById('mode-reply-btn').classList.toggle('active', isReply);
-  document.getElementById('mode-out-btn').classList.toggle('active', !isReply);
-  document.getElementById('ea-sub').textContent = isReply
-    ? 'Chọn store → inbox tự tải → click email → agent xử lý'
-    : 'Chọn store → điền thông tin → agent viết email chủ động';
-  if (!isReply) renderOutStores();
+function setStep(text) {
+  document.getElementById('step-indicator').textContent = text;
 }
 
-// ── Excel / Order lookup ──────────────────────────────
-function loadExcel(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      let rows = [];
-      if (file.name.endsWith('.csv')) {
-        const lines = new TextDecoder('utf-8').decode(e.target.result).split(/\r?\n/).filter(l=>l.trim());
-        excelHeaders = lines[0].split(',').map(h=>h.replace(/"/g,'').trim());
-        rows = lines.slice(1).map(line => {
-          const vals = line.split(',').map(v=>v.replace(/"/g,'').trim());
-          const obj = {}; excelHeaders.forEach((h,i) => obj[h]=vals[i]||''); return obj;
-        });
-      } else {
-        const wb = XLSX.read(e.target.result, {type:'array'});
-        const raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1});
-        excelHeaders = (raw[0]||[]).map(h=>String(h).trim());
-        rows = raw.slice(1).map(row => {
-          const obj = {}; excelHeaders.forEach((h,i) => obj[h]=row[i]!==undefined?String(row[i]).trim():''); return obj;
-        }).filter(r=>Object.values(r).some(v=>v));
-      }
-      excelData = rows;
-      document.getElementById('excel-stat').textContent = `✓ ${rows.length} đơn · ${excelHeaders.length} cột`;
-      document.getElementById('excel-zone').textContent = `✓ ${file.name}`;
-      document.getElementById('excel-upload-wrap').style.display = 'none';
-      document.getElementById('excel-loaded').style.display = 'flex';
-    } catch(err) {
-      document.getElementById('excel-stat').textContent = '⚠ Lỗi đọc file';
-    }
-  };
-  file.name.endsWith('.csv') ? reader.readAsArrayBuffer(file) : reader.readAsArrayBuffer(file);
-}
-
-function clearExcel() {
-  excelData = []; excelHeaders = [];
-  document.getElementById('excel-input').value = '';
-  document.getElementById('excel-zone').textContent = '📂 Upload file Excel / CSV đơn hàng';
-  document.getElementById('excel-upload-wrap').style.display = 'block';
-  document.getElementById('excel-loaded').style.display = 'none';
-  document.getElementById('excel-stat').textContent = '';
-  document.getElementById('order-results').style.display = 'none';
-  document.getElementById('order-results').innerHTML = '';
-  document.getElementById('excel-search').value = '';
-}
-
-function findOrders(emailQuery) {
-  if (!emailQuery || excelData.length === 0) return [];
-  const emailCol = excelHeaders.find(h => /email|mail/i.test(h));
-  let matches = emailCol
-    ? excelData.filter(r => (r[emailCol]||'').toLowerCase().includes(emailQuery.toLowerCase()))
-    : excelData.filter(r => Object.values(r).some(v => typeof v==='string' && v.toLowerCase().includes(emailQuery.toLowerCase()) && v.includes('@')));
-  const seen = new Set();
-  return matches.filter(r => {
-    const trackCol = excelHeaders.find(h=>/track/i.test(h));
-    const key = (trackCol ? r[trackCol] : '') || Object.values(r).join('|');
-    if (seen.has(key)) return false; seen.add(key); return true;
-  });
-}
-
-function searchOrder(q) {
-  const matches = findOrders(q);
-  renderOrderResults(matches);
-}
-
-function renderOrderResults(matches) {
-  const el = document.getElementById('order-results');
-  if (!matches.length) { el.style.display = 'none'; return; }
-  window._orderMatches = matches;
-  const trackCol = excelHeaders.find(h=>/track/i.test(h));
-  const keyPat = [/name|tên/i,/email|mail/i,/order|đơn|no\b/i,/track/i,/product|sản phẩm/i,/size/i,/sku/i,/store/i];
-  el.style.display = 'flex';
-  el.innerHTML = matches.slice(0,5).map((row, i) => {
-    const tv = trackCol ? row[trackCol] : '';
-    const fields = excelHeaders.filter(h => row[h] && keyPat.some(p=>p.test(h))).slice(0,6);
-    const displayFields = fields.length ? fields : excelHeaders.filter(h=>row[h]).slice(0,5);
-    const fieldsHtml = displayFields.map(h=>
-      `<span style="color:var(--muted);font-size:11px;">${h}:</span> <span style="font-size:12px;font-weight:500;">${row[h]}</span>`
-    ).join(' &nbsp;·&nbsp; ');
-    return `<div style="padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--bg3);">
-      <div style="display:flex;align-items:flex-start;gap:10px;">
-        <div style="flex:1;font-size:12px;line-height:1.8;">${fieldsHtml}</div>
-        <div style="flex-shrink:0;text-align:right;">
-          ${tv ? `<div style="font-size:11px;color:var(--accent2);margin-bottom:4px;">🔗 ${tv}</div>` : `<div style="font-size:11px;color:var(--warn);margin-bottom:4px;">⏳ Chưa có tracking</div>`}
-          <button onclick="applyOrder(${i})" style="padding:5px 12px;border-radius:6px;background:var(--accent);border:none;color:#fff;font-size:12px;cursor:pointer;font-family:var(--font);">✓ Chọn</button>
-        </div>
-      </div>
-    </div>`;
-  }).join('') + (matches.length > 5 ? `<div style="font-size:11px;color:var(--muted);padding:4px;">...+${matches.length-5} đơn khác</div>` : '');
-}
-
-function applyOrder(idx) {
-  const row = (window._orderMatches||[])[idx];
-  if (!row) return;
-  const trackCol = excelHeaders.find(h=>/track/i.test(h));
-  const tv = (trackCol && row[trackCol]) ? String(row[trackCol]).trim() : '';
-  EA.orderInfo = Object.entries(row).filter(([k,v])=>v).map(([k,v])=>`${k}: ${v}`).join('\n');
-  if (tv) {
-    document.getElementById('tracking-num').value = tv;
-    onTrackingInput();
-  }
-  document.getElementById('order-results').innerHTML =
-    `<div style="color:var(--accent2);font-size:12px;padding:6px 0;">✓ Đã chọn đơn${tv?' — Tracking: '+tv:' — chưa có tracking'}</div>`;
-}
-
-function autoLookup() {
-  const emailText = document.getElementById('email-text').value;
-  if (!emailText || excelData.length === 0) return;
-  const emailRegex = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
-  const allEmails = [...new Set(emailText.match(emailRegex)||[])];
-  const storeEmail = EA.store?.email?.toLowerCase() || '';
-  const custEmails = allEmails.filter(e => {
-    const el = e.toLowerCase();
-    return el !== storeEmail && !el.includes('noreply') && !el.includes('no-reply') && !el.includes('donotreply');
-  });
-  if (!custEmails.length) return;
-  for (const email of custEmails) {
-    const matches = findOrders(email);
-    if (matches.length > 0) {
-      document.getElementById('excel-search').value = email;
-      document.getElementById('excel-loaded').style.display = 'flex';
-      document.getElementById('excel-upload-wrap').style.display = 'none';
-      renderOrderResults(matches);
-      if (matches.length === 1) applyOrder(0);
-      return;
-    }
-  }
-}
-
-// ── Tracking ──────────────────────────────────────────
-function onTrackingInput() {
-  const num = document.getElementById('tracking-num').value.trim();
-  const linkEl = document.getElementById('tracking-link');
-  const urlEl = document.getElementById('tracking-url');
-  if (num) {
-    const url = `https://t.17track.net/en#nums=${encodeURIComponent(num)}`;
-    urlEl.href = url; urlEl.textContent = url;
-    linkEl.style.display = 'block';
-  } else {
-    linkEl.style.display = 'none';
-  }
-}
-
-function openTracking() {
-  const num = document.getElementById('tracking-num').value.trim();
-  if (!num) { alert('Nhập tracking number trước!'); return; }
-  window.open(`https://t.17track.net/en#nums=${encodeURIComponent(num)}`, '_blank');
-}
-
-// ── Store ─────────────────────────────────────────────
-function renderStores() {
-  const sel = document.getElementById('store-sel');
-  sel.innerHTML = '<option value="">-- Chọn cửa hàng --</option>' +
-    stores.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
-}
-
-function onStoreChange() {
-  const id = document.getElementById('store-sel').value;
-  EA.store = stores.find(s=>s.id===id) || null;
-  const badge = document.getElementById('store-badge');
-  if (EA.store) {
-    badge.style.display = 'flex';
-    document.getElementById('store-icon').textContent = EA.store.name[0].toUpperCase();
-    document.getElementById('store-name-txt').textContent = EA.store.name;
-    document.getElementById('store-tone-txt').textContent = EA.store.tone || 'friendly';
-    document.getElementById('inbox-step').style.display = 'block';
-    // Auto load inbox
-    loadInbox();
-  } else {
-    badge.style.display = 'none';
-    document.getElementById('inbox-step').style.display = 'none';
-  }
-}
-
-// ── Inbox ─────────────────────────────────────────────
-async function loadInbox() {
-  if (!EA.store) return;
-  const btn = document.getElementById('inbox-load-btn');
-  const countEl = document.getElementById('inbox-count');
-  btn.disabled = true; btn.textContent = '...';
-  countEl.textContent = '';
-  document.getElementById('inbox-list').innerHTML = '<div style="color:var(--muted);font-size:12px;padding:4px 0;">Đang tải...</div>';
-  try {
-    const data = await callEmailServer('GET', `/inbox/${EA.store.id}?limit=50`);
-    let emails = data.emails || [];
-    // Use unreadCount from server
-    const unreadUids = new Set();
-    // Separate second call for UNSEEN
-    const totalLoaded = emails.length;
-    // Filter unread only
-    emails = emails.filter(e => !e.seen);
-    emails.sort((a,b) => new Date(b.date) - new Date(a.date));
-    window._inbox = emails;
-    countEl.textContent = emails.length ? `${emails.length} chưa đọc` : '';
-    if (!emails.length) {
-      document.getElementById('inbox-list').innerHTML = '<div style="color:var(--accent2);font-size:12px;padding:4px 0;">✓ Không có email chưa đọc!</div>';
-    } else {
-      document.getElementById('inbox-list').innerHTML = emails.map((e,i) => {
-        const from = e.from?.replace(/<.*>/,'').trim() || e.from || 'Unknown';
-        const date = new Date(e.date).toLocaleString('vi-VN',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-        return `<div class="inbox-card" onclick="openEmail(${i})" id="ic-${i}" style="border-left:3px solid var(--accent);">
-          <div class="inbox-meta">
-            <div class="inbox-from" style="font-weight:600;color:var(--text);display:flex;align-items:center;gap:5px;">
-              <span style="width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0;display:inline-block;"></span>${from}
-            </div>
-            <div class="inbox-time">${date}</div>
-          </div>
-          <div class="inbox-subj" style="font-weight:500;color:var(--text);margin-top:3px;">${e.subject||'(no subject)'}</div>
-          <div class="inbox-snippet" style="margin-top:2px;">${e.snippet||''}</div>
-        </div>`;
-      }).join('');
-    }
-  } catch(err) {
-    document.getElementById('inbox-list').innerHTML = `<div style="color:var(--danger);font-size:12px;">${err.message}</div>`;
-  }
-  btn.disabled = false; btn.textContent = '⟳';
-}
-
-async function openEmail(idx) {
-  const emails = window._inbox || [];
-  const email = emails[idx];
-  if (!email) return;
-  EA.email = email;
-
-  // Highlight card
-  document.querySelectorAll('.inbox-card').forEach(c=>c.classList.remove('active'));
-  document.getElementById('ic-'+idx)?.classList.add('active');
-
-  // Show preview state
-  showState('state-preview');
-  document.getElementById('prev-subject').textContent = email.subject||'(no subject)';
-  document.getElementById('prev-from').textContent = email.from?.replace(/<.*>/,'').trim()||email.from||'';
-  document.getElementById('prev-date').textContent = new Date(email.date).toLocaleString('vi-VN');
-  document.getElementById('prev-body').textContent = email.text||'';
-  document.getElementById('prev-summary-text').innerHTML = '<span style="color:var(--muted);font-size:12px;">⏳ Đang tóm tắt...</span>';
-  document.getElementById('thread-list').style.display = 'none';
-
-  // AI summary
-  try {
-    const txt = await callClaude(
-      'Tóm tắt email khách hàng bằng tiếng Việt trong 2 dòng ngắn gọn:\n(1) Vấn đề/yêu cầu chính\n(2) Mức độ cấp thiết\nChỉ trả plain text.',
-      `Subject: ${email.subject}\nFrom: ${email.from}\n\n${(email.text||'').slice(0,800)}`
-    );
-    document.getElementById('prev-summary-text').innerHTML = txt.replace(/\n/g,'<br>');
-  } catch(e) {
-    document.getElementById('prev-summary-text').textContent = '(Không thể tóm tắt)';
-  }
-}
-
-function clearPreview() {
-  document.querySelectorAll('.inbox-card').forEach(c=>c.classList.remove('active'));
-  EA.email = null;
-  showState('state-placeholder');
-}
-
-async function loadThread() {
-  if (!EA.email || !EA.store) return;
-  const listEl = document.getElementById('thread-list');
-  listEl.style.display = 'flex';
-  listEl.innerHTML = '<div style="color:var(--muted);font-size:12px;">Đang tải thread...</div>';
-  try {
-    const subject = EA.email.subject?.replace(/^(re:|fw:|fwd:)\s*/gi,'').trim()||'';
-    const data = await callEmailServer('GET', `/thread/${EA.store.id}?subject=${encodeURIComponent(subject)}`);
-    const thread = data.thread || [];
-    window._thread = thread;
-    listEl.innerHTML = thread.map(e => {
-      const isStore = (e.from||'').toLowerCase().includes((EA.store.email||'').toLowerCase());
-      const from = e.from?.replace(/<.*>/,'').trim()||'Unknown';
-      return `<div style="padding:8px 10px;border-radius:8px;background:${isStore?'var(--bg3)':'var(--bg2)'};border-left:3px solid ${isStore?'var(--accent2)':'var(--accent)'};font-size:12px;">
-        <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
-          <strong>${from}</strong>
-          <span style="color:var(--muted);font-size:11px;">${new Date(e.date).toLocaleString('vi-VN')}</span>
-        </div>
-        <div style="color:var(--muted);line-height:1.6;">${(e.text||'').slice(0,200)}${(e.text||'').length>200?'...':''}</div>
-      </div>`;
-    }).join('');
-  } catch(e) {
-    listEl.innerHTML = `<div style="color:var(--danger);font-size:12px;">${e.message}</div>`;
-  }
-}
-
-// ── Process email → fill agent ────────────────────────
-function processEmail() {
-  if (!EA.email) return;
-  const thread = window._thread;
-  let threadText = '';
-  if (thread && thread.length > 1) {
-    threadText = thread.map((e,i) => {
-      const from = e.from?.replace(/<.*>/,'').trim()||'Unknown';
-      const date = new Date(e.date).toLocaleDateString('vi-VN');
-      return `--- Email ${i+1} (${date}) ---\nFrom: ${from}\nSubject: ${e.subject||''}\n\n${e.text||''}`;
-    }).join('\n\n');
-  } else {
-    const from = EA.email.from?.replace(/<.*>/,'').trim()||'Unknown';
-    threadText = `--- Email (${new Date(EA.email.date).toLocaleDateString('vi-VN')}) ---\nFrom: ${from}\nSubject: ${EA.email.subject||''}\n\n${EA.email.text||''}`;
-  }
-  // Store thread info for reply
-  EA.threadMessageId = EA.email.messageId||'';
-  EA.threadRefs = Array.isArray(EA.email.references) ? EA.email.references.join(' ') : (EA.email.references||'');
-
-  // Fill email text
-  document.getElementById('email-text').value = threadText;
-  document.getElementById('email-src').style.display = 'inline';
-
-  // Mark seen
-  const emails = window._inbox||[];
-  const idx = emails.findIndex(e=>e.uid===EA.email.uid);
-  if (idx >= 0 && !emails[idx].seen) {
-    emails[idx].seen = true;
-    const card = document.getElementById('ic-'+idx);
-    if (card) {
-      card.style.borderLeft = '1px solid var(--border)';
-      card.querySelector('.inbox-from').style.fontWeight = '400';
-      card.querySelector('.inbox-from').style.color = 'var(--muted)';
-      const dot = card.querySelector('span[style*="border-radius:50%"]');
-      if (dot) dot.remove();
-    }
-    callEmailServer('POST', `/mark-seen/${EA.store.id}/${EA.email.uid}`).catch(()=>{});
-  }
-
-  // Auto lookup order
-  setTimeout(autoLookup, 100);
-
-  // Scroll to analyze button
-  document.getElementById('analyze-btn')?.scrollIntoView({behavior:'smooth',block:'center'});
-  showState('state-placeholder');
-}
-
-// ── Analysis ──────────────────────────────────────────
-function buildContext() {
-  const storeCtx = `Store: ${EA.store.name}\nEmail: ${EA.store.email||''}\nNiche: ${EA.store.niche||'POD products'}\nTone: ${EA.store.tone||'friendly'}\nSignature:\n${EA.store.signature||`Best regards,\n${EA.store.name} Support Team`}`;
-  const policyCtx = `Shipping: ${globalPolicy.shipping_policy||'7-14 business days'}\nReturn: ${globalPolicy.return_policy||'30 days for defective items'}`;
-  const scenarios = (allScenarios||[]).filter(s=>s.is_active);
-  const scenCtx = scenarios.length ? '\nSCENARIOS:\n'+scenarios.map((s,i)=>
-    `${i+1}. [${s.category}|${s.severity}] ${s.title}\nHandling: ${s.handling}\nTone: ${s.tone}`
-  ).join('\n') : '';
-  const trackNum = document.getElementById('tracking-num').value.trim();
-  const trackStatus = document.getElementById('tracking-status').value.trim();
-  const trackCtx = (trackNum||trackStatus||EA.orderInfo) ? `\nORDER/TRACKING:\n${EA.orderInfo||''}\n${trackNum?'Tracking: '+trackNum:''}\n${trackStatus?'Status: '+trackStatus:''}` : '';
-  return {storeCtx, policyCtx, scenCtx, trackCtx};
-}
-
-async function runAnalysis() {
-  const emailText = document.getElementById('email-text').value.trim();
-  if (!emailText) { alert('Chưa có nội dung email!'); return; }
-  if (!EA.store) { alert('Chưa chọn store!'); return; }
+async function startAnalysis() {
+  const emailText = document.getElementById('customer-email').value.trim();
+  if (!emailText) { alert('Vui lòng dán chuỗi email khách!'); return; }
+  if (!selectedStore) { alert('Vui lòng chọn cửa hàng trước!'); return; }
 
   const btn = document.getElementById('analyze-btn');
   btn.disabled = true; btn.textContent = '⏳ Đang phân tích...';
-  setAgentBadge('Đang phân tích...', true);
-  showState('state-analysis');
-  document.getElementById('analysis-status').innerHTML = '<div class="dot pulse"></div> Đang phân tích...';
-  document.getElementById('analysis-status').className = 'status-pill active';
-  ['cat-row','s-history','s-request','s-direction'].forEach(id => {
-    document.getElementById(id).innerHTML = '';
-  });
+  setStatus('Agent đang phân tích...', true);
+  setStep('Bước 2 — Đang phân tích');
 
-  const {storeCtx, policyCtx, scenCtx, trackCtx} = buildContext();
-  const system = `You are a senior customer service manager for a POD store.
-Analyze the email thread and respond ONLY in this exact JSON:
+  document.getElementById('output-placeholder').classList.add('hidden');
+  document.getElementById('output-analysis').classList.remove('hidden');
+  document.getElementById('draft-section').classList.add('hidden');
+  document.getElementById('cat-display').innerHTML = '';
+  document.getElementById('history-summary').textContent = '';
+  document.getElementById('latest-request').textContent = '';
+  document.getElementById('direction-display').textContent = '';
+
+  const { storeCtx, policyCtx } = buildStoreContext();
+
+  // Build scenarios context
+  const activeScenarios = allScenarios.filter(s => s.is_active);
+  const scenariosCtx = activeScenarios.length ? `
+RESPONSE SCENARIOS (match the best scenario to the situation):
+${activeScenarios.map((s,i) => `
+Scenario ${i+1}: [${s.category.toUpperCase()} | ${s.severity.toUpperCase()}] ${s.title}
+- Situation: ${s.description || 'N/A'}
+- Handling: ${s.handling}
+- Tone: ${s.tone}
+${s.example_phrases?.length ? '- Trigger phrases: '+s.example_phrases.join(' / ') : ''}
+`).join('')}
+When you identify a matching scenario, apply its handling direction and tone in your recommendation.
+` : '';
+
+  // Get tracking info if available
+  const trackingNumber = document.getElementById('tracking-number').value.trim();
+  const trackingResult = document.getElementById('tracking-result').value.trim();
+  const orderInfo = agentState?.orderInfo || '';
+  const trackingCtx = (trackingNumber || trackingResult || orderInfo) ? `
+ORDER & TRACKING INFO:
+${orderInfo ? `Order details from system:\n${orderInfo}` : ''}
+${trackingNumber ? `Tracking number: ${trackingNumber}` : ''}
+${trackingResult ? `Current tracking status:\n${trackingResult}` : trackingNumber ? '(Tracking status not yet checked — customer may need to wait)' : ''}
+Use this information when analyzing and suggesting how to handle the customer's inquiry.
+` : '';
+
+  const system = `You are a senior customer service manager for a POD store on ShopBase.
+Analyze the full email thread provided and respond ONLY in this exact JSON (no markdown, no extra text):
 {
   "categories": ["tracking"|"defective"|"shipping"|"refund"|"cancel"|"product_question"|"other"],
-  "detected_language": "language customer writes in",
-  "history_summary": "Tóm tắt lịch sử bằng tiếng Việt, 2-3 câu",
-  "latest_request": "Yêu cầu mới nhất bằng tiếng Việt, 1-2 câu",
-  "matched_scenario": "Tên kịch bản phù hợp nhất hoặc null",
-  "direction": "Hướng xử lý bằng tiếng Việt, format:\\n- Hành động 1\\n- Hành động 2\\nTối đa 5 dòng ngắn gọn"
+  "detected_language": "the language the customer is writing in, e.g. English, French, German...",
+  "history_summary": "Tóm tắt lịch sử trao đổi bằng tiếng Việt, ngắn gọn 2-3 câu",
+  "latest_request": "Nội dung/yêu cầu mới nhất của khách bằng tiếng Việt, 1-2 câu",
+  "matched_scenario": "Tên kịch bản phù hợp nhất (nếu có), hoặc null",
+  "direction": "Hướng xử lý bằng tiếng Việt. BẮT BUỘC dùng format:\n- Hành động 1\n- Hành động 2\n- Hành động 3\nMỗi dòng bắt đầu bằng dấu gạch ngang - và xuống dòng \\n. Tối đa 5 gạch đầu dòng, mỗi dòng dưới 15 từ."
 }
-STORE: ${storeCtx}
-POLICIES: ${policyCtx}${trackCtx}${scenCtx}`;
+
+STORE INFO: ${storeCtx}
+POLICIES: ${policyCtx}
+${trackingCtx}${scenariosCtx}`;
 
   try {
-    const text = await callClaude(system, `Email thread:\n${emailText}`);
-    const parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
-    EA.analysis = parsed;
-    EA.detectedLang = parsed.detected_language || 'English';
+    const text = await callClaude(system, `Full email thread:\n${emailText}`);
+    const parsed = JSON.parse(text.replace(/\`\`\`json|\`\`\`/g, '').trim());
 
-    // Render categories
-    const catRow = document.getElementById('cat-row');
-    (parsed.categories||['other']).forEach(c => {
-      const info = CAT[c]||CAT.other;
+    agentState.analysis = parsed;
+    agentState.emailText = emailText;
+    agentState.detectedLang = parsed.detected_language || 'English';
+
+    const catRow = document.getElementById('cat-display');
+    (parsed.categories || ['other']).forEach(c => {
+      const info = CAT[c] || CAT.other;
       catRow.innerHTML += `<span class="tag ${info.cls}">${info.label}</span>`;
     });
-    catRow.innerHTML += `<span class="tag tag-gray" style="margin-left:4px;">🌐 ${parsed.detected_language}</span>`;
-    if (parsed.matched_scenario) catRow.innerHTML += `<span class="tag tag-teal" style="margin-left:4px;">🎯 ${parsed.matched_scenario}</span>`;
-
-    document.getElementById('s-history').textContent = parsed.history_summary||'';
-    document.getElementById('s-request').textContent = parsed.latest_request||'';
-
-    // Render direction as bullets
-    const dirEl = document.getElementById('s-direction');
-    const lines = (parsed.direction||'').split('\n');
-    dirEl.innerHTML = lines.map(line => {
-      const t = line.trim().replace(/^[-–—•*]\s*/,'').replace(/^\d+[.)]\s*/,'').trim();
-      if (!t) return '';
-      return `<div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:5px;line-height:1.5;">
-        <span style="color:var(--accent2);flex-shrink:0;margin-top:1px;">—</span>
-        <span style="font-size:12px;">${t}</span>
-      </div>`;
-    }).filter(h=>h).join('');
-
-    document.getElementById('analysis-status').innerHTML = '<div class="dot"></div> Xong';
-    document.getElementById('analysis-status').className = 'status-pill';
-    setAgentBadge('Phân tích xong');
-
-    // Save to DB
-    if (sb && currentUser) {
-      const logId = crypto.randomUUID();
-      EA.logId = logId;
-      sb.from('email_logs').insert({
-        id: logId, user_id: currentUser.id, user_email: currentUser.email,
-        store_id: EA.store.id, store_name: EA.store.name,
-        customer_email: emailText,
-        categories: parsed.categories,
-        summary: parsed.history_summary, draft: null,
-      }).then(()=>{}).catch(()=>{});
+    catRow.innerHTML += `<span class="tag tag-blue" style="margin-left:6px;">🌐 ${parsed.detected_language}</span>`;
+    if (parsed.matched_scenario) {
+      catRow.innerHTML += `<span class="tag tag-teal" style="margin-left:6px;">🎯 ${parsed.matched_scenario}</span>`;
     }
+
+    document.getElementById('history-summary').textContent = parsed.history_summary || '';
+    document.getElementById('latest-request').textContent = parsed.latest_request || '';
+    const dirText = parsed.direction || '';
+    const dirEl = document.getElementById('direction-display');
+    // Split on newline OR ". (" numbered) OR numbered list patterns
+    let dirLines = dirText.split(/\n|(?<=\.\s)(?=[A-ZĐÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚÝĂẮẶẶƯỪ])|(?<=\)\s)/);
+    // If still just one line, try splitting on ". " between sentences
+    if (dirLines.length <= 1) {
+      dirLines = dirText.split(/\.\s+(?=[A-ZĐÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚÝĂẮẶẶƯỪ(])/);
+    }
+    dirEl.innerHTML = dirLines.map(line => {
+      const t = line.trim().replace(/^\./, '').trim();
+      if (!t) return '';
+      const clean = t.replace(/^[-–—•*]\s*/, '').replace(/^\d+[.)]\s*/, '').trim();
+      return `<div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:6px;line-height:1.5;">
+        <span style="color:var(--accent2);flex-shrink:0;margin-top:2px;font-size:14px;">—</span>
+        <span style="font-size:12px;">${clean}</span>
+      </div>`;
+    }).filter(h => h).join('');
+    document.getElementById('feedback-input').value = '';
+
+    setStatus('Bước 3 — Kiểm tra hướng xử lý');
+    setStep('Bước 3 — Duyệt hướng xử lý');
+
+    // Lưu lịch sử ngay sau khi phân tích xong (draft sẽ update sau)
+    if (sb && currentUser) {
+      try {
+        // Generate a client-side ID to track this log entry
+        const logId = crypto.randomUUID();
+        agentState.logId = logId;
+        const {error: insertErr} = await sb.from('email_logs').insert({
+          id: logId,
+          user_id: currentUser.id,
+          user_email: currentUser.email,
+          store_id: selectedStore?.id || null,
+          store_name: selectedStore?.name || null,
+          customer_email: emailText,
+          categories: parsed.categories,
+          summary: parsed.history_summary,
+          draft: null,
+        });
+        if (insertErr) console.error('Insert error:', insertErr);
+      } catch(e2) { console.error('Log insert error:', e2); }
+    }
+
   } catch(e) {
-    document.getElementById('s-history').textContent = '⚠️ Lỗi: ' + e.message;
-    setAgentBadge('Lỗi phân tích');
+    setStatus('Lỗi!');
+    document.getElementById('history-summary').textContent = '⚠️ ' + e.message;
+    console.error(e);
   }
 
-  btn.disabled = false; btn.textContent = '✦ Phân tích email';
+  btn.disabled = false;
+  btn.textContent = '✦ Phân tích chuỗi email';
 }
 
-async function sendFeedback() {
-  const feedback = document.getElementById('feedback-txt').value.trim();
-  if (!feedback) { alert('Nhập góp ý trước!'); return; }
-  if (!EA.analysis) return;
-  const btn = document.getElementById('feedback-btn');
-  btn.disabled = true; btn.textContent = '⏳...';
-  const {storeCtx, policyCtx} = buildContext();
+async function submitFeedback() {
+  const feedback = document.getElementById('feedback-input').value.trim();
+  if (!feedback) { alert('Vui lòng nhập góp ý trước!'); return; }
+  if (!agentState.analysis) { alert('Hãy phân tích email trước!'); return; }
+
+  const fbBtn = document.getElementById('feedback-btn');
+  fbBtn.disabled = true; fbBtn.textContent = '⏳ Agent đang điều chỉnh...';
+  setStatus('Đang điều chỉnh hướng xử lý...', true);
+
+  const { storeCtx, policyCtx } = buildStoreContext();
+  // Get tracking info if available
+  const trackingNumber = document.getElementById('tracking-number').value.trim();
+  const trackingResult = document.getElementById('tracking-result').value.trim();
+  const orderInfo = agentState?.orderInfo || '';
+  const trackingCtx = (trackingNumber || trackingResult || orderInfo) ? `
+ORDER & TRACKING INFO:
+${orderInfo ? `Order details from system:\n${orderInfo}` : ''}
+${trackingNumber ? `Tracking number: ${trackingNumber}` : ''}
+${trackingResult ? `Current tracking status:\n${trackingResult}` : trackingNumber ? '(Tracking status not yet checked — customer may need to wait)' : ''}
+Use this information when analyzing and suggesting how to handle the customer's inquiry.
+` : '';
+
+  const system = `You are a senior customer service manager for a POD store on ShopBase.
+The staff has reviewed your suggested direction and provided feedback. Update the direction accordingly.
+Respond ONLY in this exact JSON:
+{
+  "direction": "Hướng xử lý cập nhật. BẮT BUỘC format: mỗi hành động trên 1 dòng riêng bắt đầu bằng -. VD: - Xin lỗi khách\n- Kiểm tra tracking\n- Đề xuất refund hoặc resend"
+}
+STORE INFO: ${storeCtx}
+POLICIES: ${policyCtx}`;
+
+  const userMsg = `Original email thread: ${agentState.emailText}
+Previous direction: ${agentState.analysis.direction}
+Staff feedback: ${feedback}`;
+
   try {
-    const text = await callClaude(
-      `Update the handling direction based on staff feedback. Respond ONLY in JSON: {"direction": "Updated direction in Vietnamese, bullet format with \\n- items"}
-STORE: ${storeCtx}`,
-      `Previous direction: ${EA.analysis.direction}\nStaff feedback: ${feedback}`
-    );
-    const parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
-    EA.analysis.direction = parsed.direction;
-    const dirEl = document.getElementById('s-direction');
-    const lines = (parsed.direction||'').split('\n');
-    dirEl.innerHTML = lines.map(line => {
-      const t = line.trim().replace(/^[-–—•*]\s*/,'').replace(/^\d+[.)]\s*/,'').trim();
+    const text = await callClaude(system, userMsg);
+    const parsed = JSON.parse(text.replace(/\`\`\`json|\`\`\`/g, '').trim());
+    const updatedDir = parsed.direction || '';
+    const dirEl2 = document.getElementById('direction-display');
+    let dirLines2 = updatedDir.split(/\n|(?<=\.\s)(?=[A-ZĐÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚÝĂẮẶẶƯỪ])/);
+    if (dirLines2.length <= 1) dirLines2 = updatedDir.split(/\.\s+(?=[A-ZĐÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚÝĂẮẶẶƯỪ(])/);
+    dirEl2.innerHTML = dirLines2.map(line => {
+      const t = line.trim().replace(/^\./, '').trim();
       if (!t) return '';
-      return `<div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:5px;"><span style="color:var(--accent2);flex-shrink:0;">—</span><span style="font-size:12px;">${t}</span></div>`;
-    }).filter(h=>h).join('');
-    document.getElementById('feedback-txt').value = '';
-  } catch(e) { alert('Lỗi: '+e.message); }
-  btn.disabled = false; btn.textContent = '✎ Gửi góp ý';
+      const clean = t.replace(/^[-–—•*]\s*/, '').replace(/^\d+[.)]\s*/, '').trim();
+      return `<div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:6px;line-height:1.5;">
+        <span style="color:var(--accent2);flex-shrink:0;margin-top:2px;font-size:14px;">—</span>
+        <span style="font-size:12px;">${clean}</span>
+      </div>`;
+    }).filter(h => h).join('');
+    agentState.analysis.direction = updatedDir;
+    document.getElementById('feedback-input').value = '';
+    setStatus('Đã cập nhật — kiểm tra lại');
+  } catch(e) {
+    setStatus('Lỗi khi điều chỉnh');
+    console.error(e);
+  }
+
+  fbBtn.disabled = false; fbBtn.textContent = '✎ Gửi góp ý → agent chỉnh lại';
 }
 
 async function writeDraft() {
-  if (!EA.analysis) return;
-  const btn = document.getElementById('approve-btn');
-  btn.disabled = true; btn.textContent = '⏳ Đang viết...';
-  setAgentBadge('Đang viết email...', true);
-  showState('state-draft');
-  document.getElementById('draft-orig').textContent = '';
-  document.getElementById('draft-vn').textContent = '';
-  document.getElementById('draft-lang').innerHTML = '<div class="dot pulse"></div> Đang soạn...';
+  if (!agentState.analysis) { alert('Hãy phân tích email trước!'); return; }
 
-  const {storeCtx, policyCtx} = buildContext();
-  const system = `Write a SHORT reply email in ${EA.detectedLang} following the approved direction.
-MAX 12 lines including greeting and signature. Be warm but concise.
-Then translate to Vietnamese.
-Respond ONLY in JSON: {"email_original": "...", "email_vietnamese": "..."}
-STORE: ${storeCtx}`;
-  const emailText = document.getElementById('email-text').value;
+  const approveBtn = document.getElementById('approve-btn');
+  approveBtn.disabled = true; approveBtn.textContent = '⏳ Đang viết email...';
+  setStatus('Đang viết email + dịch...', true);
+  setStep('Bước 5 — Đang soạn email');
+
+  document.getElementById('draft-section').classList.remove('hidden');
+  document.getElementById('draft-original').textContent = '';
+  document.getElementById('draft-vietnamese').textContent = '';
+  document.getElementById('lang-badge').innerHTML = '<div class="dot pulse" style="color:var(--accent2)"></div> Đang soạn...';
+
+  const { storeCtx, policyCtx } = buildStoreContext();
+  const system = `You are a professional customer service agent for a POD store on ShopBase.
+Write a SHORT reply email in ${agentState.detectedLang} following the approved handling direction.
+EMAIL RULES:
+- Maximum 10-15 lines total (including greeting and signature)
+- One short paragraph per idea, no long blocks of text
+- Be warm but concise — no unnecessary filler phrases
+- End with the store signature
+Then translate the full email to Vietnamese.
+Respond ONLY in this exact JSON (no markdown, no extra text):
+{
+  "email_original": "Short reply email in ${agentState.detectedLang} with store signature. Max 15 lines.",
+  "email_vietnamese": "Full Vietnamese translation of the email above"
+}
+STORE INFO: ${storeCtx}
+POLICIES: ${policyCtx}`;
+
+  const userMsg = `Email thread: ${agentState.emailText}
+Approved handling direction: ${agentState.analysis.direction}
+Write the reply email following this direction exactly.`;
 
   try {
-    const text = await callClaude(system, `Email thread:\n${emailText}\n\nApproved direction:\n${EA.analysis.direction}`);
-    const parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
-    EA.draft = parsed.email_original||'';
-    document.getElementById('draft-orig').textContent = EA.draft;
-    document.getElementById('draft-vn').textContent = parsed.email_vietnamese||'';
-    document.getElementById('draft-lang').innerHTML = `<div class="dot"></div> ${EA.detectedLang}`;
-    setAgentBadge('Xong — copy & gửi');
-    if (sb && currentUser && EA.logId) {
-      sb.from('email_logs').update({draft: EA.draft}).eq('id', EA.logId).then(()=>{}).catch(()=>{});
+    const text = await callClaude(system, userMsg);
+    const parsed = JSON.parse(text.replace(/\`\`\`json|\`\`\`/g, '').trim());
+
+    currentDraft = parsed.email_original || '';
+    document.getElementById('draft-original').textContent = currentDraft;
+    document.getElementById('draft-vietnamese').textContent = parsed.email_vietnamese || '';
+    document.getElementById('lang-badge').innerHTML = `<div class="dot" style="color:var(--accent2)"></div> ${agentState.detectedLang} — Xác nhận bản dịch rồi copy`;
+
+    setStatus('Xong — đọc bản dịch & copy');
+    setStep('Bước 6 — Xác nhận & copy');
+
+    if (sb && currentUser) {
+      try {
+        if (agentState.logId) {
+          // Update existing log with draft
+          await sb.from('email_logs').update({ draft: currentDraft })
+            .eq('id', agentState.logId);
+        } else {
+          // Fallback: insert new if no logId
+          await sb.from('email_logs').insert({
+            user_id: currentUser.id, user_email: currentUser.email,
+            store_id: selectedStore?.id || null,
+            store_name: selectedStore?.name || null,
+            customer_email: agentState.emailText,
+            categories: agentState.analysis?.categories || [],
+            summary: agentState.analysis?.history_summary || '',
+            draft: currentDraft,
+          });
+        }
+      } catch(e2) { console.error('Log update error:', e2); }
     }
+
   } catch(e) {
-    document.getElementById('draft-orig').textContent = '⚠️ '+e.message;
-    setAgentBadge('Lỗi');
+    document.getElementById('draft-original').textContent = '⚠️ ' + e.message;
+    setStatus('Lỗi khi soạn email');
+    console.error(e);
   }
-  btn.disabled = false; btn.textContent = '✓ Viết email';
+
+  approveBtn.disabled = false; approveBtn.textContent = '✓ Đồng ý — Viết email';
 }
 
 function copyDraft() {
-  if (!EA.draft) return;
-  navigator.clipboard.writeText(EA.draft).then(() => {
+  if (!currentDraft) return;
+  navigator.clipboard.writeText(currentDraft).then(() => {
     const btn = document.getElementById('copy-btn');
-    btn.textContent = '✓ Đã copy!';
-    setTimeout(() => btn.textContent = '⎘ Copy — dán vào PrivateMail để gửi', 2500);
+    btn.textContent = '✓ Đã copy! Dán vào email và gửi cho khách';
+    setTimeout(() => btn.textContent = '⎘ Copy email gốc', 3000);
   });
 }
 
-function newEmail() {
-  document.getElementById('email-text').value = '';
-  document.getElementById('email-src').style.display = 'none';
-  document.getElementById('tracking-num').value = '';
-  document.getElementById('tracking-status').value = '';
-  document.getElementById('tracking-link').style.display = 'none';
-  document.getElementById('order-results').style.display = 'none';
-  document.getElementById('excel-search').value = '';
-  EA.email = null; EA.analysis = null; EA.draft = ''; EA.logId = null; EA.orderInfo = null;
-  document.querySelectorAll('.inbox-card').forEach(c=>c.classList.remove('active'));
-  showState('state-placeholder');
-  setAgentBadge('Sẵn sàng');
+function resetAgent() {
+  document.getElementById('customer-email').value = '';
+  const badge = document.getElementById('email-source-badge');
+  if (badge) badge.style.display = 'none';
+  document.getElementById('tracking-number').value = '';
+  document.getElementById('tracking-result').value = '';
+  document.getElementById('tracking-link-row').classList.add('hidden');
+  document.getElementById('excel-search-email').value = '';
+  document.getElementById('excel-search-result').style.display = 'none';
+  if (agentState) agentState.orderInfo = null;
+  document.getElementById('output-placeholder').classList.remove('hidden');
+  document.getElementById('output-analysis').classList.add('hidden');
+  document.getElementById('draft-section').classList.add('hidden');
+  agentState = { analysis: null, detectedLang: 'English' };
+  currentDraft = '';
+  setStatus('Sẵn sàng');
+  setStep('Bước 1 — Chờ email');
 }
 
-function redraft() {
-  const note = prompt('Yêu cầu viết lại (VD: ngắn hơn, nhấn mạnh xin lỗi...)');
+async function redraftWithNote() {
+  const note = prompt('Yêu cầu viết lại (tiếng Việt):');
   if (!note) return;
-  if (EA.analysis) EA.analysis.direction += '\nLưu ý: ' + note;
-  writeDraft();
-}
-
-// ── Outbound ──────────────────────────────────────────
-let outStore = null;
-let outDraft = '';
-
-function renderOutStores() {
-  const sel = document.getElementById('out-store');
-  sel.innerHTML = '<option value="">-- Chọn cửa hàng --</option>' +
-    stores.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
-}
-
-function onOutStoreChange() {
-  const id = document.getElementById('out-store').value;
-  outStore = stores.find(s=>s.id===id)||null;
-}
-
-function outLookup(email) {
-  if (!email || !email.includes('@') || excelData.length === 0) return;
-  const matches = findOrders(email);
-  if (!matches.length) return;
-  const nameCol = excelHeaders.find(h=>/^name$|customer.?name|buyer/i.test(h));
-  if (nameCol && matches[0][nameCol]) document.getElementById('out-name').value = matches[0][nameCol];
-  const keyPat = [/name|tên/i,/email|mail/i,/order|đơn/i,/product|sản phẩm/i,/size/i,/color|màu/i,/address/i,/track/i];
-  const row = matches[0];
-  const fields = excelHeaders.filter(h=>row[h]&&keyPat.some(p=>p.test(h))).slice(0,10);
-  const allF = fields.length ? fields : excelHeaders.filter(h=>row[h]).slice(0,8);
-  document.getElementById('out-order-detail').innerHTML = allF.map(h=>
-    `<div><span style="color:var(--muted);font-size:11px;">${h}:</span> <span style="font-size:12px;font-weight:500;">${row[h]}</span></div>`
-  ).join('');
-  document.getElementById('out-order-info').style.display = 'block';
-}
-
-function onPurposeChange() {
-  const p = document.getElementById('out-purpose').value;
-  const container = document.getElementById('out-dynamic');
-  container.innerHTML = '';
-  const fieldMap = {
-    confirm_size:[{id:'ob1',label:'Size/màu hiện tại',ph:'VD: L / Red / Design A'},{id:'ob2',label:'Điểm cần xác nhận',ph:'VD: 2 áo khác size, cần xác nhận từng cái'}],
-    confirm_address:[{id:'ob1',label:'Địa chỉ hiện tại',ph:'VD: 123 Main St...'},{id:'ob2',label:'Phần cần làm rõ',ph:'VD: Thiếu số căn hộ'}],
-    confirm_phone:[{id:'ob1',label:'Lý do cần SĐT',ph:'VD: Carrier yêu cầu liên hệ trước khi giao'}],
-    confirm_all:[{id:'ob1',label:'Tóm tắt thông tin đơn',ph:'VD: Hoodie đen XL, giao về...'}],
-    order_update:[{id:'ob1',label:'Tình trạng hiện tại',ph:'VD: Đã in, dự kiến ship ngày 20/1'}],
-    delay_notice:[{id:'ob1',label:'Lý do chậm',ph:'VD: Nhà cung cấp hết nguyên liệu'},{id:'ob2',label:'Thời gian mới dự kiến',ph:'VD: 5-7 ngày làm việc'}],
-    product_issue:[{id:'ob1',label:'Vấn đề',ph:'VD: Màu in bị lệch'},{id:'ob2',label:'Giải pháp',ph:'VD: In lại và gửi miễn phí'}],
-    custom:[{id:'ob1',label:'Mô tả nội dung',ph:'VD: Thông báo khách rằng...'}],
-  };
-  (fieldMap[p]||[]).forEach(f => {
-    container.innerHTML += `<div style="margin-top:10px;"><label>${f.label}</label><textarea id="${f.id}" rows="2" style="resize:none;font-size:12px;" placeholder="${f.ph}"></textarea></div>`;
-  });
-}
-
-async function genOutbound() {
-  const email = document.getElementById('out-email').value.trim();
-  const purpose = document.getElementById('out-purpose').value;
-  if (!email) { alert('Nhập email khách!'); return; }
-  if (!purpose) { alert('Chọn mục đích!'); return; }
-  if (!outStore) { alert('Chọn store!'); return; }
-
-  const btn = document.getElementById('out-btn');
-  btn.disabled = true; btn.textContent = '⏳ Đang viết...';
-  document.getElementById('out-status').innerHTML = '<div class="dot pulse"></div> Đang soạn...';
-  document.getElementById('out-status').className = 'status-pill active';
-  document.getElementById('out-placeholder').style.display = 'none';
-  document.getElementById('out-result').style.display = 'flex';
-  document.getElementById('out-orig').textContent = '';
-  document.getElementById('out-vn').textContent = '';
-
-  const name = document.getElementById('out-name').value.trim()||'there';
-  const notes = document.getElementById('out-notes').value.trim();
-  const dynInfo = ['ob1','ob2'].map(id=>document.getElementById(id)?.value.trim()).filter(Boolean).join('\n');
-  const orderInfo = document.getElementById('out-order-detail').textContent.trim();
-  const purposeMap = {confirm_size:'confirm size/color/design',confirm_address:'confirm shipping address',confirm_phone:'request phone number',confirm_all:'confirm all order details',order_update:'order status update',delay_notice:'shipping delay notice',product_issue:'product issue notification',custom:'custom message'};
-
-  const system = `Write a SHORT outbound email in English. Max 12 lines including greeting and signature.
-Be warm, clear, state purpose immediately.
-Store: ${outStore.name} | Email: ${outStore.email} | Tone: ${outStore.tone||'friendly'}
-Signature: ${outStore.signature||`Best regards,\n${outStore.name} Support`}
-Respond ONLY in JSON: {"email_original": "...", "email_vietnamese": "..."}`;
-
-  try {
-    const text = await callClaude(system,
-      `Purpose: ${purposeMap[purpose]||purpose}\nCustomer: ${name} <${email}>\n${dynInfo?'Details:\n'+dynInfo:''}\n${orderInfo?'Order info:\n'+orderInfo:''}\n${notes?'Notes: '+notes:''}`
-    );
-    const parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
-    outDraft = parsed.email_original||'';
-    document.getElementById('out-orig').textContent = outDraft;
-    document.getElementById('out-vn').textContent = parsed.email_vietnamese||'';
-    document.getElementById('out-status').innerHTML = '<div class="dot"></div> Xong';
-    document.getElementById('out-status').className = 'status-pill';
-  } catch(e) {
-    document.getElementById('out-orig').textContent = '⚠️ '+e.message;
+  if (agentState.analysis) {
+    agentState.analysis.direction = agentState.analysis.direction + '. Lưu ý thêm: ' + note;
   }
-  btn.disabled = false; btn.textContent = '✦ Viết email chủ động';
+  await writeDraft();
 }
-
-function copyOutbound() {
-  if (!outDraft) return;
-  navigator.clipboard.writeText(outDraft).then(() => {
-    const btn = document.querySelector('#out-result .copy-btn');
-    if (btn) { btn.textContent = '✓ Đã copy!'; setTimeout(()=>btn.textContent='⎘ Copy — dán vào PrivateMail',2500); }
-  });
-}
-
-function resetOutbound() {
-  document.getElementById('out-email').value = '';
-  document.getElementById('out-name').value = '';
-  document.getElementById('out-purpose').value = '';
-  document.getElementById('out-dynamic').innerHTML = '';
-  document.getElementById('out-notes').value = '';
-  document.getElementById('out-order-info').style.display = 'none';
-  document.getElementById('out-placeholder').style.display = 'flex';
-  document.getElementById('out-result').style.display = 'none';
-  outDraft = '';
-}
-
-
 
 // ── CREATIVE AGENT ───────────────────────────────────
 let creativeImageBase64 = null;
@@ -2750,138 +2178,6 @@ async function deleteScenario(id, title) {
   await loadScenarios();
 }
 
-// ── EMAIL SERVER (IMAP/SMTP) ──────────────────────────
-async function callEmailServer(method, path, body = null) {
-  const opts = {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-secret': CONFIG.EMAIL_SECRET,
-    },
-  };
-  if (body) opts.body = JSON.stringify(body);
-  const res = await fetch(CONFIG.EMAIL_SERVER + path, opts);
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Server error');
-  return data;
-}
-
-async function sendReplyEmail() {
-  if (!currentDraft) { alert('Chưa có draft email!'); return; }
-  if (!selectedStore) { alert('Chưa chọn store!'); return; }
-
-  // Extract customer email from thread
-  const emailText = document.getElementById('customer-email').value;
-  const emailRegex = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
-  const allEmails = [...new Set(emailText.match(emailRegex) || [])];
-  const storeEmail = selectedStore.email?.toLowerCase() || '';
-  const customerEmails = allEmails.filter(e => {
-    const el = e.toLowerCase();
-    return el !== storeEmail && !el.includes('noreply') && !el.includes('no-reply') && !el.includes('donotreply');
-  });
-
-  if (!customerEmails.length) {
-    alert('Không tìm thấy email khách trong chuỗi email!');
-    return;
-  }
-
-  const customerEmail = customerEmails[0];
-  const btn = document.getElementById('send-btn');
-  const statusEl = document.getElementById('send-status');
-  btn.disabled = true;
-  btn.textContent = '⏳ Đang gửi...';
-  statusEl.style.display = 'none';
-
-  try {
-    // Extract subject from draft (first line or use default)
-    const draftLines = currentDraft.split('\n').map(l => l.trim()).filter(Boolean);
-    const subjectLine = draftLines.find(l => l.toLowerCase().startsWith('subject:'));
-    let subject = subjectLine ? subjectLine.replace(/^subject:\s*/i, '') : 'Re: Your Order';
-
-    // Get thread info from agentState if available
-    const inReplyTo = agentState?.threadMessageId || '';
-    const references = agentState?.threadReferences || '';
-
-    const result = await callEmailServer('POST', `/send/${selectedStore.id}`, {
-      to: customerEmail,
-      subject,
-      text: currentDraft,
-      inReplyTo,
-      references,
-    });
-
-    // Email sent successfully!
-    statusEl.style.display = 'block';
-    statusEl.style.background = '#1a3a24';
-    statusEl.style.color = '#86efac';
-    statusEl.textContent = `✓ Đã gửi thành công đến ${customerEmail}!`;
-    btn.style.background = '#1D9E75';
-    btn.textContent = '✓ Đã gửi!';
-
-    // Log to DB (non-blocking — don't let DB error affect send success)
-    if (sb && currentUser && agentState?.logId) {
-      sb.from('email_logs').update({
-        draft: currentDraft,
-        sent: true,
-        sent_to: customerEmail,
-        sent_at: new Date().toISOString(),
-      }).eq('id', agentState.logId).then(() => {}).catch(() => {});
-    }
-
-  } catch(e) {
-    statusEl.style.display = 'block';
-    statusEl.style.background = '#3a1a1a';
-    statusEl.style.color = '#fca5a5';
-    statusEl.textContent = '⚠️ Lỗi gửi: ' + e.message;
-    btn.disabled = false;
-    btn.textContent = '📤 Gửi email trực tiếp';
-    console.error(e);
-  }
-}
-
-// Also add send button for outbound emails
-async function sendOutboundEmail() {
-  if (!currentOutboundDraft) { alert('Chưa có draft email!'); return; }
-  if (!outboundStore) { alert('Chưa chọn store!'); return; }
-
-  const customerEmail = document.getElementById('outbound-customer-email').value.trim();
-  if (!customerEmail) { alert('Chưa có email khách!'); return; }
-
-  const btn = document.getElementById('outbound-send-btn');
-  const statusEl = document.getElementById('outbound-send-status');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Đang gửi...'; }
-  if (statusEl) statusEl.style.display = 'none';
-
-  try {
-    const draftLines = currentOutboundDraft.split('\n').map(l => l.trim()).filter(Boolean);
-    const subjectLine = draftLines.find(l => l.toLowerCase().startsWith('subject:'));
-    let subject = subjectLine ? subjectLine.replace(/^subject:\s*/i, '') : 'Message from ' + outboundStore.name;
-
-    await callEmailServer('POST', `/send/${outboundStore.id}`, {
-      to: customerEmail,
-      subject,
-      text: currentOutboundDraft,
-      replyToName: document.getElementById('outbound-customer-name').value.trim(),
-    });
-
-    if (statusEl) {
-      statusEl.style.display = 'block';
-      statusEl.style.background = '#1a3a24';
-      statusEl.style.color = '#86efac';
-      statusEl.textContent = `✓ Đã gửi thành công đến ${customerEmail}!`;
-    }
-    if (btn) { btn.style.background = '#1D9E75'; btn.textContent = '✓ Đã gửi!'; }
-  } catch(e) {
-    if (statusEl) {
-      statusEl.style.display = 'block';
-      statusEl.style.background = '#3a1a1a';
-      statusEl.style.color = '#fca5a5';
-      statusEl.textContent = '⚠️ Lỗi: ' + e.message;
-    }
-    if (btn) { btn.disabled = false; btn.textContent = '📤 Gửi email trực tiếp'; }
-    console.error('Send error:', e);
-  }
-}
 
 // ── HISTORY ──────────────────────────────────────────
 async function loadHistory() {
