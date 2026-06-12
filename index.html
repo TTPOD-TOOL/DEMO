@@ -1198,11 +1198,18 @@ function selectOrderByIndex(idx) {
   if (!row) { console.warn('No row at idx', idx); return; }
   const trackCol = excelHeaders.find(h => /track/i.test(h));
   const trackVal = (trackCol && row[trackCol]) ? String(row[trackCol]).trim() : '';
-  // Fill tracking number
+  // Fill tracking number — ensure tracking step is visible first
+  const trackingStep = document.getElementById('step-tracking-block');
+  if (trackingStep) trackingStep.style.display = 'block';
   const tnInput = document.getElementById('tracking-number');
   if (tnInput) {
     tnInput.value = trackVal;
     updateTrackingLink();
+    if (trackVal) {
+      setTimeout(() => {
+        tnInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 150);
+    }
   }
   // Store order info for agent
   agentState = agentState || {};
