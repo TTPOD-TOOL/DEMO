@@ -1602,16 +1602,24 @@ RETURN & REFUND POLICY: ${globalPolicy.return_policy || 'Returns accepted within
   return { storeCtx, policyCtx };
 }
 
-async function callClaude(system, userMsg) {
-  const res = await fetch(CONFIG.WORKER_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: 'claude-sonnet-4-5', max_tokens: 1500, system, messages: [{ role: 'user', content: userMsg }] })
-  });
-  const data = await res.json();
-  if (!res.ok || data.error) throw new Error(data.error?.message || JSON.stringify(data));
-  if (!data.content) throw new Error('Không nhận được phản hồi. Kiểm tra Claude API key.');
-  return data.content.map(i => i.text || '').join('');
+async function callClaude(system, userMsg, retries = 3) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(CONFIG.WORKER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'claude-sonnet-4-5', max_tokens: 1500, system, messages: [{ role: 'user', content: userMsg }] })
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error?.message || JSON.stringify(data));
+      if (!data.content) throw new Error('Không nhận được phản hồi.');
+      return data.content.map(i => i.text || '').join('');
+    } catch(e) {
+      if (attempt === retries) throw e;
+      // Wait 1s before retry
+      await new Promise(r => setTimeout(r, 1000 * attempt));
+    }
+  }
 }
 
 function setStatus(text, active = false) {
