@@ -1886,7 +1886,8 @@ Write the reply email following this direction exactly.`;
         if (agentState.logId) {
           // Update existing log with draft
           await sb.from('email_logs').update({ draft: currentDraft })
-            .eq('id', agentState.logId);
+            .eq('id', agentState.logId)
+            .eq('user_id', currentUser.id);
         } else {
           // Fallback: insert new if no logId
           await sb.from('email_logs').insert({
@@ -2284,7 +2285,7 @@ async function loadAdminData() {
   // Fetch all users + email logs in parallel
   const [{data:users}, {data:logs}] = await Promise.all([
     sb.from('user_list').select('*').order('created_at', {ascending:false}),
-    sb.from('email_logs').select('id, user_id, user_email, store_name, summary, categories, created_at')
+    sb.from('email_logs').select('id, user_id, user_email, store_name, summary, categories, created_at, draft')
       .order('created_at', {ascending:false}).limit(500)
   ]);
 
